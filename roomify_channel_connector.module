@@ -1,0 +1,746 @@
+<?php
+/**
+ * @file
+ * Code for the roomify_channel_connector feature.
+ */
+
+use Roomify\Bat\Event\Event;
+use Roomify\Bat\Calendar\Calendar;
+use Roomify\Bat\Store\DrupalDBStore;
+use Roomify\Bat\Unit\Unit;
+
+include_once 'roomify_channel_connector.features.inc';
+
+define('CM_URL', 'https://cm.roomify.us/');
+
+/**
+ * Implements hook_menu().
+ */
+function roomify_channel_connector_menu() {
+  $items = array();
+
+  // Channel management tab for units.
+  $items['admin/config/services/channel-management'] = array(
+    'title' => 'Roomify Channel Management',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('roomify_channel_connector_configuration_form'),
+    'access arguments' => array('configure channel management'),
+    'type' => MENU_NORMAL_ITEM,
+    'description' => t('Configuration for the Roomify Channel Management service'),
+  );
+
+  // Channel management tab for units.
+  $items['admin/bat/config/property/manage/%roomify_property/channel-management'] = array(
+    'title' => 'Channel Management',
+    'page callback' => 'roomify_channel_connector_management_tab',
+    'page arguments' => array(5),
+    'access arguments' => array('manage property channels'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => '20',
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_permission()
+ */
+function roomify_channel_connector_permission() {
+  return array(
+    'configure channel management' =>  array(
+      'title' => t('Configure Channel Management'),
+      'description' => t('Configure Roomify Channel Management.'),
+    ),
+    'manage property channels' =>  array(
+      'title' => t('Manage Property Channels'),
+      'description' => t('Access the Channel Management tab on properties.'),
+    ),
+    'create channel reservations' =>  array(
+      'title' => t('Create Channel Reservations'),
+      'description' => t('Create Channel Reservations.'),
+    ),
+    'retrieve channel availability information' => array(
+      'title' => t('Retrieve channel availability info'),
+      'description' => t('Retrieve channel availability info'),
+    ),
+    'retrieve rate information' => array(
+    'title' => t('Retrieve channel rate info'),
+    'description' => t('Retrieve channel rate info'),
+  )
+
+  );
+}
+
+/**
+ * Module configuration form.
+ */
+function roomify_channel_connector_configuration_form($form, &$form_state) {
+  $form['roomify_channel_connector_site_id'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Roomify Site ID'),
+    '#description' => t('Enter the Site ID you were given when subscribing to the Roomify channel management service.'),
+    '#element_validate' => array('element_validate_integer_positive'),
+    '#default_value' => roomify_channel_connector_get_site_id(),
+  );
+
+  $form['roomify_channel_connector_site_token'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Roomify Site Token'),
+    '#description' => t('Enter the Site Token you were given when subscribing to the Roomify channel management service.'),
+    '#default_value' => variable_get('roomify_channel_connector_site_token', ''),
+  );
+
+  return system_settings_form($form);
+}
+
+function roomify_channel_connector_services_resources() {
+  $resources = array();
+
+  $resources['channel-reservation'] = array(
+    'operations' => array(
+      'create' => array (
+        'callback' => 'roomify_channel_connector_create',
+        'help' => t('Creates a new reservation through the channel manager'),
+        'access arguments' => array('create channel reservations'),
+        'args' => array(
+          array(
+            'name' => 'reservation',
+            'type' => 'array',
+            'description' => 'The reservation object',
+            'source' => 'data',
+            'optional' => FALSE,
+          ),
+        ),
+      ),
+    ),
+  );
+
+  $resources['channel-availability'] = array(
+    'operations' => array(
+      'index' => array(
+        'callback' => 'roomify_channel_connector_availability',
+        'help' => t('Returns availability information in Json.'),
+        'access arguments' => array('retrieve channel availability information'),
+        'args'     => array(
+          array(
+            'name'         => 'property_id',
+            'type'         => 'string',
+            'description'  => t('The property id for which to retrieve info - should be mapped correctly'),
+            'source'       => array('path' => 0),
+            'optional'     => TRUE,
+          ),
+          array(
+            'name'         => 'room_id',
+            'type'         => 'string',
+            'description'  => t('The roomid for which to retrieve availability info'),
+            'source'       => array('path' => 1),
+            'optional'     => TRUE,
+          ),
+          array(
+            'name'         => 'rate_id',
+            'type'         => 'string',
+            'description'  => t('The rateid for which to retrieve availability info'),
+            'source'       => array('path' => 2),
+            'optional'     => TRUE,
+          ),
+          array(
+            'name'         => 'start_date',
+            'type'         => 'string',
+            'description'  => t('The start date for which to retrieve availability info - e.g. 2016-03-01'),
+            'source'       => array('path' => 3),
+            'optional'     => TRUE,
+          ),
+          array(
+            'name'         => 'end_date',
+            'type'         => 'string',
+            'description'  => t('The end date for which to retrieve availability info - e.g. 2016-03-01'),
+            'source'       => array('path' => 4),
+            'optional'     => TRUE,
+          ),
+
+        ),
+      ),
+    ),
+  );
+
+  $resources['type-availability'] = array(
+    'operations' => array(
+      'index' => array(
+        'callback' => 'roomify_channel_type_availability',
+        'help' => t('Returns availability information for a bat type in Json.'),
+        'access arguments' => array('retrieve type availability information'),
+        'args'     => array(
+          array(
+            'name'         => 'property_id',
+            'type'         => 'string',
+            'description'  => t('The property id for which to retrieve info - should be mapped correctly'),
+            'source'       => array('path' => 0),
+            'optional'     => TRUE,
+          ),
+          array(
+            'name'         => 'type_id',
+            'type'         => 'string',
+            'description'  => t('The  type id for which to retrieve availability info'),
+            'source'       => array('path' => 1),
+            'optional'     => TRUE,
+          ),
+          array(
+            'name'         => 'start_date',
+            'type'         => 'string',
+            'description'  => t('The start date for which to retrieve availability info - e.g. 2016-03-01'),
+            'source'       => array('path' => 2),
+            'optional'     => TRUE,
+          ),
+          array(
+            'name'         => 'end_date',
+            'type'         => 'string',
+            'description'  => t('The end date for which to retrieve availability info - e.g. 2016-03-01'),
+            'source'       => array('path' => 3),
+            'optional'     => TRUE,
+          ),
+
+        ),
+      ),
+    ),
+  );
+
+  $resources['channel-rates'] = array(
+    'operations' => array(
+      'index' => array(
+        'callback' => 'roomify_channel_connector_rates',
+        'help' => t('Returns rate information in Json.'),
+        'access arguments' => array('retrieve bcom rate information'),
+        'args'     => array(
+          array(
+            'name'         => 'property_id',
+            'type'         => 'string',
+            'description'  => t('The property id for which to retrieve info - should be mapped correctly'),
+            'source'       => array('path' => 0),
+            'optional'     => TRUE,
+          ),
+          array(
+            'name'         => 'room_id',
+            'type'         => 'string',
+            'description'  => t('The room_id for which to retrieve availability info'),
+            'source'       => array('path' => 1),
+            'optional'     => TRUE,
+          ),
+          array(
+            'name'         => 'rate_id',
+            'type'         => 'string',
+            'description'  => t('The rate_id for which to retrieve availability info'),
+            'source'       => array('path' => 2),
+            'optional'     => TRUE,
+          ),
+          array(
+            'name'         => 'start_date',
+            'type'         => 'string',
+            'description'  => t('The start date for which to retrieve availability info - e.g. 2016-03-01'),
+            'source'       => array('path' => 3),
+            'optional'     => TRUE,
+          ),
+          array(
+            'name'         => 'end_date',
+            'type'         => 'string',
+            'description'  => t('The end date for which to retrieve availability info - e.g. 2016-03-01'),
+            'source'       => array('path' => 4),
+            'optional'     => TRUE,
+          ),
+
+        ),
+      ),
+    ),
+  );
+
+  return $resources;
+}
+
+/**
+ * Creates a booking of type booking.com
+ *
+ * @param $reservations
+ * @return string
+ */
+function roomify_channel_connector_create($reservations) {
+  watchdog('Channel Manager', 'Bookingcom Create Reservation Called', array(), WATCHDOG_INFO);
+  $reply  = array();
+
+  foreach ($reservations as $reservation) {
+
+    // Let us check if cancelled and deal with that
+    if ($reservation['status'] == 'cancelled') {
+      // We should have all the bookings associated with this reservation so let's load them and set status to cancelled
+      $efq = new EntityFieldQuery();
+      $efq->entityCondition('entity_type', 'bat_booking')
+        ->entityCondition('bundle', 'booking_com', '=')
+        ->fieldCondition('field_bcom_reservation_id', 'value', $reservation['id'], '=');
+
+      $bookings = $efq->execute();
+
+      if (isset($bookings['bat_booking'])){
+        // cycle through each booking and set status to cancelled
+        foreach ($bookings['bat_booking'] as $key => $booking) {
+          $cm_room = bat_booking_load($key);
+          $cm_room->field_bcom_status[LANGUAGE_NONE][0]['value'] = "cancelled";
+          $cm_room->field_bcom_cancellation_fee[LANGUAGE_NONE][0]['value'] = $reservation['total_cancellation_fee'];
+
+          $cm_room->save();
+          watchdog('Channel Manager', 'Booking.com reservation ' . $reservation['id']  . ' cancelled', array(), WATCHDOG_INFO);
+          $reply[] = 'Booking.com reservation ' . $reservation['id']  . ' cancelled';
+        }
+      }
+
+      return json_encode($reply);
+    }
+
+    // With modified reservations two things can happen. 1. A room is completely cancelled or room data has been altered or changed.
+    // We should remove all existing bookings and create new ones with status modified.
+    if ($reservation['status'] == 'modified') {
+
+      // We start by getting all the bookings on our system and check if they still match bookings on the other side, bookings
+      // that are lost are set to cancelled, the ones that remain are set to modified.
+      $efq = new EntityFieldQuery();
+      $efq->entityCondition('entity_type', 'bat_booking')
+        ->entityCondition('bundle', 'booking_com', '=')
+        ->fieldCondition('field_bcom_reservation_id', 'value', $reservation['id'], '=');
+
+      $bookings = $efq->execute();
+
+      if (isset($bookings['bat_booking'])) {
+        // Cycle through the rooms coming from Booking.com
+        $bookingrooms = array();
+        foreach ($reservation['rooms'] as $room) {
+          $bookingrooms[$room['roomreservation_id']] = $room['roomreservation_id'];
+        }
+
+        // Do a comparison between room info we got and room info that we have and set any rooms that got cancelled
+        foreach ($bookings['bat_booking'] as $key => $booking) {
+          $cm_room = bat_booking_load($key);
+          // Check if the booking still exists
+          if (isset($bookingrooms[$cm_room->field_bcom_room_reservation_id[LANGUAGE_NONE][0]['value']])) {
+            // we are good room is still there
+          } else {
+            $cm_room->field_bcom_status[LANGUAGE_NONE][0]['value'] = "cancelled";
+            $cm_room->save();
+            watchdog('Channel Manager', 'Booking.com room reservation ' . $cm_room->field_bcom_room_reservation_id[LANGUAGE_NONE][0]['value']  . ' cancelled', array(), WATCHDOG_INFO);
+            $reply[] = 'Booking.com room reservation ' . $cm_room->field_bcom_room_reservation_id[LANGUAGE_NONE][0]['value']  . ' cancelled';
+
+          }
+        }
+
+      }
+    }
+
+
+    // Now we move on with dealing with reservation data knowing that we may be creating or modifying existing rooms or dealing with
+    // a new reservation.
+    foreach ($reservation['rooms'] as $room) {
+      global $user;
+
+
+      // Check if we are dealing with an existing reservation
+      $efq = new EntityFieldQuery();
+      $efq->entityCondition('entity_type', 'bat_booking')
+        ->entityCondition('bundle', 'booking_com', '=')
+        ->fieldCondition('field_bcom_reservation_id', 'value', $reservation['id'], '=')
+        ->fieldCondition('field_bcom_room_reservation_id', 'value',  $room['roomreservation_id'], '=');
+
+      $result = $efq->execute();
+
+      if (isset($result['bat_booking'])) {
+        $return = key($result['bat_booking']);
+        $booking = bat_booking_load($return);
+        $updated_time = $reservation['date'] . ' ' . $reservation['time'];
+        $booking->changed = strtotime($updated_time);
+        watchdog('Channel Manager', 'Booking.com reservation ' . $room['roomreservation_id']  . ' updated', array(), WATCHDOG_INFO);
+        $reply[] = 'Booking.com reservation ' . $room['roomreservation_id']  . ' updated';
+      } else {
+        // Create a new booking.
+        $created_time = $reservation['date'] . ' ' . $reservation['time'];
+        $booking = bat_booking_create(array(
+          'type' => 'booking_com',
+          'uid' => $user->uid,
+          'created' => strtotime($created_time),
+        ));
+        watchdog('Channel Manager', 'Booking.com reservation ' . $room['roomreservation_id']  . ' created', array(), WATCHDOG_INFO);
+        $reply[] = 'Booking.com reservation ' . $room['roomreservation_id']  . ' created';
+
+      }
+
+      $booking->field_bcom_room_reservation_id[LANGUAGE_NONE][0]['value'] = $room['roomreservation_id'];
+
+      //Start Date for the booking
+      $booking->field_bcom_arrival_date[LANGUAGE_NONE][0]['value'] = $room['arrival_date'];
+      $booking->booking_start_date[LANGUAGE_NONE][0]['value'] = $room['arrival_date'];
+
+      //End Date for the booking
+      $booking->field_bcom_departure_date[LANGUAGE_NONE][0]['value'] = $room['departure_date'];
+      $booking->booking_end_date[LANGUAGE_NONE][0]['value'] = $room['departure_date'];
+
+      $price_index = 0;
+      foreach ($room['price'] as $price) {
+        $booking->field_bcom_price_data_per_date[LANGUAGE_NONE][$price_index]['value'] = drupal_json_encode($price);
+        $price_index++;
+      }
+
+      $booking->field_bcom_room_commission[LANGUAGE_NONE][0]['value'] = $room['commissionamount'];
+      $booking->field_bcom_room_total_price[LANGUAGE_NONE][0]['value'] = $room['totalprice'];
+      $booking->field_bcom_room_currency_code[LANGUAGE_NONE][0]['value'] = $room['currencycode'];
+      $booking->field_bcom_extra_info[LANGUAGE_NONE][0]['value'] = $room['extra_info'];
+      $booking->field_bcom_facilities[LANGUAGE_NONE][0]['value'] = $room['facilities'];
+      $booking->field_bcom_guest_name[LANGUAGE_NONE][0]['value'] = $room['guest_name'];
+      $booking->field_bcom_room_id[LANGUAGE_NONE][0]['value'] = $room['id'];
+      $booking->field_bcom_room_info[LANGUAGE_NONE][0]['value'] = $room['extra_info'];
+      $booking->field_bcom_max_children[LANGUAGE_NONE][0]['value'] = $room['max_children'];
+      $booking->field_bcom_meal_plan[LANGUAGE_NONE][0]['value'] = $room['meal_plan'];
+      $booking->field_bcom_room_type_name[LANGUAGE_NONE][0]['value'] = $room['name'];
+      $booking->field_bcom_number_of_guests[LANGUAGE_NONE][0]['value'] = $room['numberofguests'];
+      $booking->field_bcom_room_remarks[LANGUAGE_NONE][0]['value'] = $room['remarks'];
+      $booking->field_bcom_smoking[LANGUAGE_NONE][0]['value'] = $room['smoking'];
+
+
+      // Add the generic reservation data
+      $booking->field_bcom_reservation_id[LANGUAGE_NONE][0]['value'] = $reservation['id'];
+      $booking->field_bcom_status[LANGUAGE_NONE][0]['value'] = $reservation['status'];
+      $booking->field_bcom_reservation_time[LANGUAGE_NONE][0]['value'] = $reservation['date'] . ' - ' . $reservation['time'];
+      $reservation_time = $reservation['date'] . ' ' . $reservation['time'];
+      $booking->changed = strtotime($reservation_time);
+
+      $booking->field_bcom_commission_amount[LANGUAGE_NONE][0]['value'] = $reservation['commissionamount'];
+      $booking->field_bcom_currency_code[LANGUAGE_NONE][0]['value'] = $reservation['currencycode'];
+      $booking->field_bcom_reservation_date[LANGUAGE_NONE][0]['value'] = $reservation['date'];
+      $booking->field_bcom_hotel_id[LANGUAGE_NONE][0]['value'] = $reservation['hotel_id'];
+      $booking->field_bcom_hotel_name[LANGUAGE_NONE][0]['value'] = $reservation['hotel_name'];
+      $booking->field_bcom_total_price[LANGUAGE_NONE][0]['value'] = $reservation['totalprice'];
+
+      // Add the customer data
+      $booking->field_bcom_first_name[LANGUAGE_NONE][0]['value'] = $reservation['customer']['first_name'];
+      $booking->field_bcom_last_name[LANGUAGE_NONE][0]['value'] = $reservation['customer']['last_name'];
+      $booking->field_bcom_email[LANGUAGE_NONE][0]['value'] = $reservation['customer']['email'];
+      $booking->field_bcom_telephone[LANGUAGE_NONE][0]['value'] = $reservation['customer']['telephone'];
+      $booking->field_bcom_company[LANGUAGE_NONE][0]['value'] = $reservation['customer']['company'];
+      $booking->field_bcom_address[LANGUAGE_NONE][0]['value'] = $reservation['customer']['address'];
+      $booking->field_bcom_city[LANGUAGE_NONE][0]['value'] = $reservation['customer']['city'];
+      $booking->field_bcom_zip[LANGUAGE_NONE][0]['value'] = $reservation['customer']['zip'];
+      $booking->field_bcom_countrycode[LANGUAGE_NONE][0]['value'] = $reservation['customer']['countrycode'];
+      $booking->field_bcom_cc_cvc[LANGUAGE_NONE][0]['value'] = $reservation['customer']['cc_cvc'];
+      $booking->field_bcom_cc_expiration_date[LANGUAGE_NONE][0]['value'] = $reservation['customer']['cc_expiration_date'];
+      $booking->field_bcom_cc_name[LANGUAGE_NONE][0]['value'] = $reservation['customer']['cc_name'];
+      $booking->field_bcom_cc_number[LANGUAGE_NONE][0]['value'] = $reservation['customer']['cc_number'];
+      $booking->field_bcom_cc_type[LANGUAGE_NONE][0]['value'] = $reservation['customer']['cc_type'];
+      $booking->field_bcom_dc_issue_numebr[LANGUAGE_NONE][0]['value'] = $reservation['customer']['dc_issue_number'];
+      $booking->field_bcom_dc_start_date[LANGUAGE_NONE][0]['value'] = $reservation['customer']['dc_start_date'];
+      $booking->field_bcom_remarks[LANGUAGE_NONE][0]['value'] = $reservation['customer']['remarks'];
+
+      $booking->save();
+
+      watchdog('Channel Manager', 'Booking.com reservation ' . $room['roomreservation_id']  . ' saved', array(), WATCHDOG_INFO);
+      $reply[] = 'Booking.com reservation ' . $room['roomreservation_id']  . ' saved';
+    }
+  }
+
+  return drupal_json_encode($reply);
+}
+
+/**
+ * Retrieve availability information for a given date range and format appropriately
+ *
+ * @param $property_id
+ * @param $room_id
+ * @param $rate_id
+ * @param $start_date
+ * @param $end_date
+ * @return array
+ */
+function roomify_channel_connector_availability($property_id, $room_id, $rate_id, $start_date, $end_date) {
+
+  // First we should map the hotelid and roomid to a property and room
+  $roomify_room_id = roomify_channel_connector_get_type_id($property_id, $room_id, $rate_id);
+
+  if ($roomify_room_id == null) {
+    return '';
+  }
+
+
+  // Assuming we have that then we load all the units associated with that type
+  $controller = entity_get_controller('bat_unit');
+
+  // Get the units that belong to the relevant room id
+  $entities = $controller->getReferencedIds($roomify_room_id);
+
+  // Create an array of unit objects - that we will pass to the calendar
+  $units = array();
+  foreach ($entities as $entity) {
+    $eo = bat_unit_load($entity['id']);
+    $units[] = new Unit($entity['id'], $eo->getEventDefaultValue('availability'));
+  }
+
+  // Create an event store for availability type events
+  $event_store = new DrupalDBStore('availability', DrupalDBStore::BAT_STATE);
+
+  // Provided that we have units let's check availability
+  if (!empty($units)) {
+    $calendar = new Calendar($units, $event_store);
+
+    $interval = new \DateInterval('P1D');
+    $daterange = new \DatePeriod(new \DateTime($start_date), $interval, new \DateTime($end_date));
+
+    $rooms_available = array();
+    foreach ($daterange as $date) {
+      $response = $calendar->getMatchingUnits($date, $date, array(1) );
+      $rooms_available[$date->format('Y-m-d')] = count($response->getIncluded());
+    }
+
+    // With the units in place we can create the properly formatted message to sent to booking.com
+    $message = array();
+    $i = -1;
+    $old_count = 0;
+    $start = TRUE;
+    foreach ($rooms_available as $day => $rooms) {
+      if ($old_count != $rooms) {
+        $start_date = $day;
+        $i++;
+      }
+      // Need to add one day to the end date because Booking.com expects the guest departure date
+      $to_date = new \DateTime($day);
+      $to_date = $to_date->add(new \DateInterval('P1D'))->format('Y-m-d');
+      $message[$i] = array(
+        'room_id' => $room_id,
+        'rate_id' => $rate_id,
+        'date_range' => array(
+          'from' => $start_date,
+          'to' => $to_date,
+        ),
+        'roomstosell' => $rooms,
+      );
+      $old_count = $rooms;
+    }
+  }
+
+  // Formatting the message based on what the channel connector expects
+  $final_message = array (
+    'hotel_id' => $property_id,
+    'rooms' => $message,
+  );
+
+  return $final_message;
+}
+
+/**
+ * Retrieve availability information for a given date range and format appropriately
+ *
+ * @param $property_id
+ * @param $type_id
+ * @param $start_date
+ * @param $end_date
+ * @return array
+ */
+function roomify_channel_type_availability($property_id, $type_id, $start_date, $end_date) {
+
+  // Load all the units associated with that type
+  $controller = entity_get_controller('bat_unit');
+
+  // Get the units that belong to the relevant room id
+  $entities = $controller->getReferencedIds($type_id);
+
+  // Create an array of unit objects - that we will pass to the calendar
+  $units = array();
+  foreach ($entities as $entity) {
+    $eo = bat_unit_load($entity['id']);
+    $units[] = new Unit($entity['id'], $eo->getEventDefaultValue('availability'));
+  }
+
+  // Create an event store for availability type events
+  $event_store = new DrupalDBStore('availability', DrupalDBStore::BAT_STATE);
+
+  // Provided that we have units let's check availability
+  if (!empty($units)) {
+    $calendar = new Calendar($units, $event_store);
+
+    $interval = new \DateInterval('P1D');
+    $daterange = new \DatePeriod(new \DateTime($start_date), $interval, new \DateTime($end_date));
+
+    $rooms_available = array();
+    foreach ($daterange as $date) {
+      $response = $calendar->getMatchingUnits($date, $date, array(1) );
+      $rooms_available[$date->format('Y-m-d')] = count($response->getIncluded());
+    }
+
+    // With the units in place we can create the properly formatted message.
+    $message = array();
+    $i = -1;
+    $old_count = 0;
+    $start = TRUE;
+    foreach ($rooms_available as $day => $rooms) {
+      if ($old_count != $rooms) {
+        $start_date = $day;
+        $i++;
+      }
+      // Add one day to the end date.
+      $to_date = new \DateTime($day);
+      $to_date = $to_date->add(new \DateInterval('P1D'))->format('Y-m-d');
+      $message[$i] = array(
+        'room_id' => $room_id,
+        'rate_id' => $rate_id,
+        'date_range' => array(
+          'from' => $start_date,
+          'to' => $to_date,
+        ),
+        'roomstosell' => $rooms,
+      );
+      $old_count = $rooms;
+    }
+  }
+
+  // Formatting the message based on what the channel connector expects.
+  $final_message = array (
+    'hotel_id' => $property_id,
+    'rooms' => $message,
+  );
+
+  return $final_message;
+}
+
+/**
+ * Retrieve pricing information for a given date range and format appropriately
+ *
+ * @param $hotel_id
+ * @param $room_id
+ * @param $rate_id
+ * @param $start_date
+ * @param $end_date
+ * @return array
+ */
+function roomify_channel_connector_rates($property_id, $room_id, $rate_id, $start_date, $end_date) {
+
+  $roomify_rate_id = roomify_channel_connector_get_rate_id($property_id, $room_id, $rate_id);
+
+  if ($roomify_rate_id == null) {
+    return '';
+  }
+
+  // First we should map the hotelid and roomid to a property and room
+  //@TODO - create the ChannelMap entity so that given a hotel_id, room_id and rate_id we can retrieve the correct
+  // rooms and rate. That should lead us to a type and rate id.
+  $currency_setting = commerce_currency_load(commerce_default_currency());
+
+  $rate = roomify_rate_load($roomify_rate_id);
+  $rates = array(
+    $rate->rate_id => new Unit($rate->rate_id, $rate->getEventDefaultValue('pricing')),
+  );
+
+  // Create an event store for pricing type events
+  $state_store = new DrupalDBStore('pricing', DrupalDBStore::BAT_STATE);
+
+  $calendar = new Calendar($rates, $state_store);
+  $events = $calendar->getEvents(new \DateTime($start_date), new \DateTime($end_date));
+
+  $message = array();
+  foreach ($events as $unit => $unit_events){
+    foreach ($unit_events as $event) {
+      $to_date = $event->getEndDate();
+      $to_date = $to_date->add(new \DateInterval('P1D'))->format('Y-m-d');
+
+      $message[] = array(
+        'room_id' => $room_id,
+        'rate_id' => $rate_id,
+        'date_range' => array(
+          'from' => $event->getStartDate()->format('Y-m-d'),
+          'to' => $to_date,
+        ),
+        'price' => commerce_currency_amount_to_decimal($event->getValue(), $currency_setting['code'])
+      );
+    }
+  }
+
+  // Formatting the message based on what the channel connector expects
+  $final_message = array (
+    'hotel_id' => $property_id,
+    'rooms' => $message,
+  );
+
+  return $final_message;
+}
+
+function roomify_channel_connector_entity_update($entity, $type) {
+  if ($type == 'bat_event' && $entity->type == 'pricing') {
+    dpm($entity);
+  }
+}
+
+function roomify_channel_connector_get_type_id($property_id, $room_id) {
+  // Check if we are dealing with an existing reservation
+  $efq = new EntityFieldQuery();
+  $efq->entityCondition('entity_type', 'roomify_channel_map')
+    ->entityCondition('bundle', 'booking_com', '=')
+    ->propertyCondition('name', $property_id, '=');
+
+  $result = $efq->execute();
+
+  foreach ($result['roomify_channel_map'] as $id => $map) {
+    $cm = roomify_channel_map_load($map->channel_map_id);
+    //unserialize();
+    foreach ($cm->field_bcom_room_mapping[LANGUAGE_NONE] as $room_mapping) {
+      $mapping = unserialize($room_mapping['composed']);
+      if ($mapping[2] == $room_id) {
+        return $mapping[1];
+      }
+    }
+  }
+  return null;
+}
+
+function roomify_channel_connector_get_rate_id($property_id, $room_id, $rate_id) {
+  // Check if we are dealing with an existing reservation
+  $efq = new EntityFieldQuery();
+  $efq->entityCondition('entity_type', 'roomify_channel_map')
+    ->entityCondition('bundle', 'booking_com', '=')
+    ->propertyCondition('name', $property_id, '=');
+
+  $result = $efq->execute();
+
+  foreach ($result['roomify_channel_map'] as $id => $map) {
+    $cm = roomify_channel_map_load($map->channel_map_id);
+    //unserialize();
+    foreach ($cm->field_bcom_roomrate_mapping[LANGUAGE_NONE] as $roomrate_mapping) {
+      $mapping = unserialize($roomrate_mapping['composed']);
+      if ($mapping[3] == $room_id && $mapping[4] == $rate_id) {
+        return $mapping[2];
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Channel Management tab.
+ */
+function roomify_channel_connector_management_tab($property) {
+  $content = array();
+
+  foreach (module_implements('roomify_channel_connector_channel') as $module) {
+    $function = $module . '_roomify_channel_connector_channel';
+    $form_id = $module . 'channel_config_form';
+    $form = $function($property);
+    $form['#form_id'] = $form_id;
+    $form_state = form_state_defaults();
+    if (!isset($form_state['input'])) {
+      $form_state['input'] = $form_state['method'] == 'get' ? $_GET : $_POST;
+    }
+
+    // Go through the FAPI preparation and processing stages.
+    drupal_prepare_form($form_id, $form, $form_state);
+    drupal_process_form($form_id, $form, $form_state);
+    $content[] = $form;
+  }
+
+  return $content;
+}
+
+/**
+ * Helper function - get roomify site ID.
+ */
+function roomify_channel_connector_get_site_id() {
+  return variable_get('roomify_channel_connector_site_id', '');
+}
