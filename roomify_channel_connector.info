@@ -12,6 +12,7 @@ dependencies[] = field_group
 dependencies[] = services
 dependencies[] = text
 dependencies[] = views
+dependencies[] = roomify_channel_map
 features[bat_booking_type][] = booking_com
 features[ctools][] = field_group:field_group:1
 features[ctools][] = services:services:3
