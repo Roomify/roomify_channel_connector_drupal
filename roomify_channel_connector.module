@@ -668,12 +668,13 @@ function roomify_channel_connector_entity_update($entity, $type) {
   }
 }
 
+
 function roomify_channel_connector_get_type_id($property_id, $room_id) {
   // Check if we are dealing with an existing reservation
   $efq = new EntityFieldQuery();
   $efq->entityCondition('entity_type', 'roomify_channel_map')
     ->entityCondition('bundle', 'booking_com', '=')
-    ->propertyCondition('name', $property_id, '=');
+    ->propertyCondition('external_property_id', $property_id , '=');
 
   $result = $efq->execute();
 
@@ -691,6 +692,7 @@ function roomify_channel_connector_get_type_id($property_id, $room_id) {
 }
 
 function roomify_channel_connector_get_rate_id($property_id, $room_id, $rate_id) {
+
   // Check if we are dealing with an existing reservation
   $efq = new EntityFieldQuery();
   $efq->entityCondition('entity_type', 'roomify_channel_map')
@@ -743,4 +745,225 @@ function roomify_channel_connector_management_tab($property) {
  */
 function roomify_channel_connector_get_site_id() {
   return variable_get('roomify_channel_connector_site_id', '');
+}
+
+/**
+ * Implements hook_roomify_channel_connector_channel().
+ */
+function roomify_channel_connector_roomify_channel_connector_channel($property) {
+  $content = roomify_channel_bookingcom_admin_form($property);
+  return $content;
+}
+
+
+function roomify_channel_connector_get_map_internal($property_id, $bundle) {
+
+  // Check if we have an existing map
+  $efq = new EntityFieldQuery();
+  $efq->entityCondition('entity_type', 'roomify_channel_map')
+    ->entityCondition('bundle', $bundle, '=')
+    ->propertyCondition('internal_property_id', $property_id, '=')
+    ->range(0,1);
+
+  $result = $efq->execute();
+  if (count($result)) {
+    return array_values($result['roomify_channel_map'])[0];
+  } else {
+    return FALSE;
+  }
+}
+
+function roomify_channel_connector_get_map_external($property_id, $bundle) {
+
+  // Check if we have an existing map
+  $efq = new EntityFieldQuery();
+  $efq->entityCondition('entity_type', 'roomify_channel_map')
+    ->entityCondition('bundle', $bundle, '=')
+    ->propertyCondition('external_property_id', $property_id, '=')
+    ->range(0,1);
+
+  $result = $efq->execute();
+  if (count($result)) {
+    return array_values($result['roomify_channel_map'])[0];
+  } else {
+    return FALSE;
+  }
+}
+
+
+/**
+ * Channel management forms for type channel management tab.
+ */
+function roomify_channel_bookingcom_admin_form($property) {
+  $form = array();
+
+  // Load the type.
+  foreach ($property->property_bat_type_reference[LANGUAGE_NONE] as $i => $id) {
+    $bat_types[] = bat_type_load($id['target_id'], TRUE);
+  }
+
+  // Check if there is a property map for this map
+  $map = roomify_channel_connector_get_map_internal($property->property_id, 'booking_com');
+  if ($map != FALSE) {
+    $map = roomify_channel_map_load($map->channel_map_id);
+  }
+
+  $form['bookingcom_map'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Booking.com Configuration'),
+  );
+
+
+  $form['bookingcom_map']['property_id'] = array(
+    '#type' => 'hidden',
+    '#value' => $property->property_id,
+  );
+
+  $form['bookingcom_map']['roomify_channel_bookingcom_hotel_id_' . $property->property_id] = array (
+    '#type' => 'textfield',
+    '#title' => 'Your Booking.com Hotel ID',
+    '#description' => 'You can get this ID by login in to your Booking.com account',
+    '#default_value' => isset($map->external_property_id) ? $map->external_property_id : '',
+  );
+
+  // If the Property ID is set then we can proceed to map the rest
+  if (variable_get('roomify_channel_bookingcom_hotel_id_' . $property->property_id) != '') {
+    $reply = roomify_channel_connector_get_bookingcom_ids(variable_get('roomify_channel_bookingcom_hotel_id_' . $property->property_id));
+
+    // Create room type options for use in form
+    if ($reply != FALSE){
+      $options = array();
+      $options['0'] = 'N/A';
+      foreach ($reply->roomrates->rooms as $room_id => $room) {
+        $options[$room_id] = $room->name;
+      }
+
+
+
+      // Create a field for each bat type to map to a room type and the standard rate for that room
+      foreach ($bat_types as $bat_type) {
+        $form['bookingcom_map']['roomify_channel_bookingcom_roomid_' . $property->property_id . '_' . $bat_type->type_id . '_' . $bat_type->type] = array(
+          '#type' => 'select',
+          '#title' => 'Booking.com Room Equivalent To ' . $bat_type->name,
+          '#description' => t('Select the Booking.com Room type that corresponds to this room type.'),
+          '#options' => $options,
+          '#default_value' => variable_get('roomify_channel_bookingcom_roomid_' . $property->property_id . '_' . $bat_type->type_id . '_' . $bat_type->type, '') ? variable_get('roomify_channel_bookingcom_roomid_' . $property->property_id . '_' . $bat_type->type_id . '_' . $bat_type->type) : 0,
+        );
+
+        if (variable_get('roomify_channel_bookingcom_roomid_' . $property->property_id . '_' . $bat_type->type_id . '_' . $bat_type->type) != 0) {
+
+          $rate_options = array('0' => 'N/A');
+          // Create rate type options for use in form
+          $room_id = variable_get('roomify_channel_bookingcom_roomid_' . $property->property_id . '_' . $bat_type->type_id . '_' . $bat_type->type);
+          foreach($reply->roomrates->rooms->$room_id->rates as $rate_id => $rate) {
+            $rate_options[$rate_id] = $rate->rate_name;
+          }
+
+          $form['bookingcom_map']['roomify_channel_bookingcom_roomid_standardrateid' . $property->property_id . '_' . $bat_type->type_id . '_' . $bat_type->type] = array(
+            '#type' => 'select',
+            '#title' => 'Booking.com rate equivalent to Standard rate for ' . $bat_type->name,
+            '#description' => t('Select the Booking.com Room type that corresponds to this room type.'),
+            '#options' => $rate_options,
+            '#default_value' => variable_get('roomify_channel_bookingcom_roomid_standardrateid' . $property->property_id . '_' . $bat_type->type_id . '_' . $bat_type->type, '') ? variable_get('roomify_channel_bookingcom_roomid_standardrateid' . $property->property_id . '_' . $bat_type->type_id . '_' . $bat_type->type) : 0,
+          );
+        }
+      }
+    }
+  }
+
+  $form['#validate'][] = 'roomify_channel_bookingcom_admin_form_validate';
+
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Update Booking.Com Mapping'),
+  );
+  //return system_settings_form($form);
+  $form['#submit'][] = 'roomify_channel_bookingcom_admin_form_submit';
+
+  return $form;
+}
+
+/**
+ * Validation handler for bookingcom form.
+ */
+function roomify_channel_bookingcom_admin_form_validate($form, &$form_state) {
+
+  $external_property_id = $form_state['values']['roomify_channel_bookingcom_hotel_id_' . $form_state['values']['property_id']];
+  $internal_property_id = $form_state['values']['property_id'];
+
+  if ($external_property_id == '') {
+    form_set_error('roomify_channel_bookingcom_hotel_id_' . $form_state['values']['property_id'], t('Please provide us with the Hotel ID on Booking.com.'));
+  }
+  if ($external_property_id != '') {
+    $reply = roomify_channel_connector_get_bookingcom_ids($form_state['values']['roomify_channel_bookingcom_hotel_id_' . $form_state['values']['property_id']]);
+    if (!$reply) {
+      form_set_error('roomify_channel_bookingcom_hotel_id_' . $form_state['values']['property_id'], t('Error connecting to property on Booking.com - please check ID or contact support'));
+    }
+
+    // Also check to see that no other property is using this property id
+    $map = roomify_channel_connector_get_map_external($external_property_id, 'booking_com');
+    if ($map != FALSE) {
+      $map = roomify_channel_map_load($map->channel_map_id);
+      if ($map->internal_property_id != $internal_property_id) {
+        form_set_error('roomify_channel_bookingcom_hotel_id_' . $form_state['values']['property_id'], t('Another property is already mapped to this Booking.com property. Please contact your site administrator.'));
+      }
+    }
+  }
+}
+
+/**
+ * Submit handle for bookingcomform
+ */
+function roomify_channel_bookingcom_admin_form_submit(&$form, &$form_state) {
+  global $user;
+
+  // Check if there is a property map already
+  $map = roomify_channel_connector_get_map_internal($form_state['values']['property_id'], 'booking_com');
+
+  // Update the existing map
+  if ($map != FALSE) {
+    $map = roomify_channel_map_load($map->channel_map_id);
+    $map->internal_property_id = $form_state['values']['property_id'];
+    $map->external_property_id = $form_state['values']['roomify_channel_bookingcom_hotel_id_' . $form_state['values']['property_id']];
+
+    entity_save('roomify_channel_map', $map);
+
+  } else {
+    // Create a channel map entit
+    $values = array(
+      'channel_map_id' => '',
+      'internal_property_id' => $form_state['values']['property_id'],
+      'external_property_id' => $form_state['values']['roomify_channel_bookingcom_hotel_id_' . $form_state['values']['property_id']],
+      'type' => 'booking_com',
+      'uid' => $user->uid,
+      'created' => time(),
+      'is_new' => TRUE,
+      'data' => array('1','2'),
+    );
+
+    $map = roomify_channel_map_create($values);
+    entity_save('roomify_channel_map', $map);
+  }
+
+
+
+}
+
+/**
+ * Retrieve Room / Rates ID from channel manager
+ */
+function roomify_channel_connector_get_bookingcom_ids($hotel_id) {
+  $cm_export_url = CM_URL . 'bc/roomrates/' . $hotel_id;
+  $request = drupal_http_request($cm_export_url);
+  if ($request->data) {
+    $reply = json_decode($request->data);
+    dpm($reply);
+    if (isset($reply->roomrates->fault->code)) {
+      return FALSE;
+    } else {
+      return $reply;
+    }
+  }
+
+  return FALSE;
 }

@@ -53,7 +53,7 @@ function roomify_channel_connector_default_services_endpoint() {
         ),
       ),
     ),
-    'rcc_reservation' => array(
+    'rcc-reservation' => array(
       'operations' => array(
         'create' => array(
           'enabled' => '1',
