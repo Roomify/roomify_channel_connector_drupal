@@ -797,12 +797,12 @@ function roomify_channel_connector_get_map_external($property_id, $bundle) {
 function roomify_channel_bookingcom_admin_form($property) {
   $form = array();
 
-  // Load the type.
+  // Load the types as we may be needing them.
   foreach ($property->property_bat_type_reference[LANGUAGE_NONE] as $i => $id) {
     $bat_types[] = bat_type_load($id['target_id'], TRUE);
   }
 
-  // Check if there is a property map for this map
+  // Check if there is a channel map for Booking.com for this property.
   $map = roomify_channel_connector_get_map_internal($property->property_id, 'booking_com');
   if ($map != FALSE) {
     $map = roomify_channel_map_load($map->channel_map_id);
@@ -810,7 +810,7 @@ function roomify_channel_bookingcom_admin_form($property) {
 
   $form['bookingcom_map'] = array(
     '#type' => 'fieldset',
-    '#title' => t('Booking.com Configuration'),
+    '#title' => t('Booking.com Channel Configuration'),
   );
 
 
@@ -822,13 +822,13 @@ function roomify_channel_bookingcom_admin_form($property) {
   $form['bookingcom_map']['roomify_channel_bookingcom_hotel_id_' . $property->property_id] = array (
     '#type' => 'textfield',
     '#title' => 'Your Booking.com Hotel ID',
-    '#description' => 'You can get this ID by login in to your Booking.com account',
+    '#description' => 'You can get this ID by logging in to your Booking.com account - once there you should also set Roomify as your channel manager.',
     '#default_value' => isset($map->external_property_id) ? $map->external_property_id : '',
   );
 
   // If the Property ID is set then we can proceed to map the rest
-  if (variable_get('roomify_channel_bookingcom_hotel_id_' . $property->property_id) != '') {
-    $reply = roomify_channel_connector_get_bookingcom_ids(variable_get('roomify_channel_bookingcom_hotel_id_' . $property->property_id));
+  if (isset($map->external_property_id)) {
+    $reply = roomify_channel_connector_get_bookingcom_ids($map->external_property_id);
 
     // Create room type options for use in form
     if ($reply != FALSE){
@@ -838,33 +838,31 @@ function roomify_channel_bookingcom_admin_form($property) {
         $options[$room_id] = $room->name;
       }
 
-
-
       // Create a field for each bat type to map to a room type and the standard rate for that room
       foreach ($bat_types as $bat_type) {
-        $form['bookingcom_map']['roomify_channel_bookingcom_roomid_' . $property->property_id . '_' . $bat_type->type_id . '_' . $bat_type->type] = array(
+        $form['bookingcom_map']['roomify_channel_bookingcom_roomid_' . $property->property_id . '_' . $bat_type->type_id] = array(
           '#type' => 'select',
-          '#title' => 'Booking.com Room Equivalent To ' . $bat_type->name,
-          '#description' => t('Select the Booking.com Room type that corresponds to this room type.'),
+          '#title' => $property->name . '-' . $bat_type->name . ' : ' . t('Select Booking.com Equivalent'),
+          '#description' => t('Select the Booking.com Room type that corresponds to') . $bat_type->name .  t(' rooms.'),
           '#options' => $options,
-          '#default_value' => variable_get('roomify_channel_bookingcom_roomid_' . $property->property_id . '_' . $bat_type->type_id . '_' . $bat_type->type, '') ? variable_get('roomify_channel_bookingcom_roomid_' . $property->property_id . '_' . $bat_type->type_id . '_' . $bat_type->type) : 0,
+          '#default_value' => isset($map->data[$property->property_id][$bat_type->type_id]['roomid']) ? $map->data[$property->property_id][$bat_type->type_id]['roomid'] : 0,
         );
-
-        if (variable_get('roomify_channel_bookingcom_roomid_' . $property->property_id . '_' . $bat_type->type_id . '_' . $bat_type->type) != 0) {
+        // Create a field to map the standard Roomify rate to the Booking.com rate
+        if (isset($map->data[$property->property_id][$bat_type->type_id]['roomid']) && $map->data[$property->property_id][$bat_type->type_id]['roomid'] != 0) {
 
           $rate_options = array('0' => 'N/A');
           // Create rate type options for use in form
-          $room_id = variable_get('roomify_channel_bookingcom_roomid_' . $property->property_id . '_' . $bat_type->type_id . '_' . $bat_type->type);
+          $room_id = $map->data[$property->property_id][$bat_type->type_id]['roomid'];
           foreach($reply->roomrates->rooms->$room_id->rates as $rate_id => $rate) {
             $rate_options[$rate_id] = $rate->rate_name;
           }
 
-          $form['bookingcom_map']['roomify_channel_bookingcom_roomid_standardrateid' . $property->property_id . '_' . $bat_type->type_id . '_' . $bat_type->type] = array(
+          $form['bookingcom_map']['roomify_channel_bookingcom_standardrate_' . $property->property_id . '_' . $bat_type->type_id] = array(
             '#type' => 'select',
-            '#title' => 'Booking.com rate equivalent to Standard rate for ' . $bat_type->name,
-            '#description' => t('Select the Booking.com Room type that corresponds to this room type.'),
+            '#title' => t('Standard Rate - ') . $property->name . '-' . $bat_type->name . ' : ' . t('Booking.com rate equivalent to Standard rate'),
+            '#description' => t('Select the Booking.com Room Standard Rate that corresponds to this room type.'),
             '#options' => $rate_options,
-            '#default_value' => variable_get('roomify_channel_bookingcom_roomid_standardrateid' . $property->property_id . '_' . $bat_type->type_id . '_' . $bat_type->type, '') ? variable_get('roomify_channel_bookingcom_roomid_standardrateid' . $property->property_id . '_' . $bat_type->type_id . '_' . $bat_type->type) : 0,
+            '#default_value' => isset($map->data[$property->property_id][$bat_type->type_id]['standardrate']) ? $map->data[$property->property_id][$bat_type->type_id]['standardrate'] : 0,
           );
         }
       }
@@ -909,6 +907,22 @@ function roomify_channel_bookingcom_admin_form_validate($form, &$form_state) {
       }
     }
   }
+
+  // User should not map two rooms to the same option
+  $previous_value = 0;
+  foreach ($form_state['values'] as $key => $value) {
+    $k = explode('_', $key);
+    if (isset($k[3]) && $k[3]=='roomid') {
+      if ($value != 0) {
+        if ($value == $previous_value) {
+          form_set_error('roomify_channel_bookingcom_roomid_' . $k[4] . '_' . $k[5], t('Another room is already mapped to this Booking.com Room.'));
+        } else {
+          $previous_value = $value;
+        }
+      }
+    }
+  }
+
 }
 
 /**
@@ -916,6 +930,8 @@ function roomify_channel_bookingcom_admin_form_validate($form, &$form_state) {
  */
 function roomify_channel_bookingcom_admin_form_submit(&$form, &$form_state) {
   global $user;
+
+  dpm($form_state, 'Form State');
 
   // Check if there is a property map already
   $map = roomify_channel_connector_get_map_internal($form_state['values']['property_id'], 'booking_com');
@@ -926,10 +942,13 @@ function roomify_channel_bookingcom_admin_form_submit(&$form, &$form_state) {
     $map->internal_property_id = $form_state['values']['property_id'];
     $map->external_property_id = $form_state['values']['roomify_channel_bookingcom_hotel_id_' . $form_state['values']['property_id']];
 
+
+    $map->changed = time();
+
     entity_save('roomify_channel_map', $map);
 
   } else {
-    // Create a channel map entit
+    // Create a channel map entity
     $values = array(
       'channel_map_id' => '',
       'internal_property_id' => $form_state['values']['property_id'],
@@ -938,12 +957,34 @@ function roomify_channel_bookingcom_admin_form_submit(&$form, &$form_state) {
       'uid' => $user->uid,
       'created' => time(),
       'is_new' => TRUE,
-      'data' => array('1','2'),
     );
 
     $map = roomify_channel_map_create($values);
     entity_save('roomify_channel_map', $map);
   }
+
+  // Now deal with room mappings - we will cycle through values looking for keys that end in room
+  foreach ($form_state['values'] as $key => $value) {
+    $k = explode('_', $key);
+    if (isset($k[3]) && $k[3]=='roomid') {
+      if ($value != 0) {
+        $map->data[$k[4]][$k[5]]['roomid'] = $value;
+        entity_save('roomify_channel_map', $map);
+      }
+    }
+  }
+
+  // Check to see if there are rates to map
+  foreach ($form_state['values'] as $key => $value) {
+    $k = explode('_', $key);
+    if (isset($k[3]) && $k[3]=='standardrate') {
+      if ($value != 0) {
+        $map->data[$k[4]][$k[5]]['standardrate'] = $value;
+        entity_save('roomify_channel_map', $map);
+      }
+    }
+  }
+
 
 
 
