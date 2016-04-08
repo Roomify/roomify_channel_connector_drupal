@@ -889,6 +889,14 @@ function roomify_channel_bookingcom_admin_form($form, &$form_state, $property) {
     '#value' => t('Update Booking.Com Mapping'),
   );
 
+  if (isset($map->external_property_id)) {
+    $form['actions']['remove'] = array(
+      '#type' => 'submit',
+      '#value' => t('Disconnect'),
+      '#submit' => array('roomify_channel_bookingcom_admin_form_disconnect_submit'),
+    );
+  }
+
   $form['#submit'][] = 'roomify_channel_bookingcom_admin_form_submit';
 
   return $form;
@@ -902,10 +910,20 @@ function roomify_channel_bookingcom_admin_form_callback($form, &$form_state) {
 }
 
 /**
- * Submit for the connect button on roomify_channel_bookingcom_admin_form form.
+ * Submit for the "Connect" button on roomify_channel_bookingcom_admin_form form.
  */
 function roomify_channel_bookingcom_admin_form_connect_submit($form, &$form_state) {
   $form_state['rebuild'] = TRUE;
+}
+
+/**
+ * Submit for the "Disconnect" button on roomify_channel_bookingcom_admin_form form.
+ */
+function roomify_channel_bookingcom_admin_form_disconnect_submit($form, &$form_state) {
+  $map = roomify_channel_connector_get_map_internal($form_state['values']['property_id'], 'booking_com');
+
+  $channel_map = roomify_channel_map_load($map->channel_map_id);
+  roomify_channel_map_delete($channel_map);
 }
 
 /**
