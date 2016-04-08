@@ -779,7 +779,7 @@ function roomify_channel_bookingcom_admin_form($form, &$form_state, $property) {
   $form['bookingcom_map']['search'] = array(
     '#type' => 'submit',
     '#value' => t('Search'),
-    '#limit_validation_errors' => array(),
+    '#limit_validation_errors' => array(array('roomify_channel_bookingcom_hotel_id_' . $property->property_id)),
     '#submit' => array('roomify_channel_bookingcom_admin_form_search_submit'),
     '#ajax' => array(
       'callback' => 'roomify_channel_bookingcom_admin_form_callback',
@@ -906,14 +906,21 @@ function roomify_channel_bookingcom_admin_form_search_submit($form, &$form_state
  * Validation handler for bookingcom form.
  */
 function roomify_channel_bookingcom_admin_form_validate($form, &$form_state) {
-  $external_property_id = $form_state['values']['roomify_channel_bookingcom_hotel_id_' . $form_state['values']['property_id']];
+  if (isset($form_state['input']['roomify_channel_bookingcom_hotel_id_' . $form_state['values']['property_id']]) &&
+      !empty($form_state['input']['roomify_channel_bookingcom_hotel_id_' . $form_state['values']['property_id']])) {
+    $external_property_id = $form_state['input']['roomify_channel_bookingcom_hotel_id_' . $form_state['values']['property_id']];
+  }
+  else {
+    $external_property_id = $form_state['values']['roomify_channel_bookingcom_hotel_id_' . $form_state['values']['property_id']];
+  }
+
   $internal_property_id = $form_state['values']['property_id'];
 
   if ($external_property_id == '') {
     form_set_error('roomify_channel_bookingcom_hotel_id_' . $form_state['values']['property_id'], t('Please provide us with the Hotel ID on Booking.com.'));
   }
   if ($external_property_id != '') {
-    $reply = roomify_channel_connector_get_bookingcom_ids($form_state['values']['roomify_channel_bookingcom_hotel_id_' . $form_state['values']['property_id']]);
+    $reply = roomify_channel_connector_get_bookingcom_ids($external_property_id);
     if (!$reply) {
       form_set_error('roomify_channel_bookingcom_hotel_id_' . $form_state['values']['property_id'], t('Error connecting to property on Booking.com - please check ID or contact support'));
     }
