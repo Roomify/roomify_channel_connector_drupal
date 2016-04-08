@@ -790,6 +790,11 @@ function roomify_channel_bookingcom_admin_form($form, &$form_state, $property) {
     ),
   );
 
+  if (isset($map->external_property_id)) {
+    $form['bookingcom_map']['roomify_channel_bookingcom_hotel_id_' . $property->property_id]['#disabled'] = TRUE;
+    $form['bookingcom_map']['connect']['#disabled'] = TRUE;
+  }
+
   if (isset($form_state['input']['roomify_channel_bookingcom_hotel_id_' . $property->property_id])) {
     $reply = roomify_channel_connector_get_bookingcom_ids($form_state['input']['roomify_channel_bookingcom_hotel_id_' . $property->property_id]);
 
@@ -861,9 +866,31 @@ function roomify_channel_bookingcom_admin_form($form, &$form_state, $property) {
           '#type' => 'select',
           '#options' => $options,
           '#default_value' => isset($map->data[$property->property_id][$bat_type->type_id]['roomid']) ? $map->data[$property->property_id][$bat_type->type_id]['roomid'] : 0,
+          '#ajax' => array(
+            'callback' => 'roomify_channel_bookingcom_admin_form_callback',
+            'wrapper' => 'roomify_channel_bookingcom_admin_form',
+          ),
         );
+
         // Create a field to map the standard Roomify rate to the Booking.com rate
-        if (isset($map->data[$property->property_id][$bat_type->type_id]['roomid']) && $map->data[$property->property_id][$bat_type->type_id]['roomid'] != 0) {
+        if (isset($form_state['input']['roomify_channel_bookingcom_roomid_' . $property->property_id . '_' . $bat_type->type_id])) {
+          if ($form_state['input']['roomify_channel_bookingcom_roomid_' . $property->property_id . '_' . $bat_type->type_id] != 0) {
+            $rate_options = array();
+            // Create rate type options for use in form
+            $room_id = $form_state['input']['roomify_channel_bookingcom_roomid_' . $property->property_id . '_' . $bat_type->type_id];
+            foreach ($reply->roomrates->rooms->$room_id->rates as $rate_id => $rate) {
+              $rate_options[$rate_id] = $rate->rate_name;
+            }
+
+            $form['bookingcom_map']['roomify_channel_bookingcom_' . $bat_type->type_id]['roomify_channel_bookingcom_standardrate_' . $property->property_id . '_' . $bat_type->type_id] = array(
+              '#type' => 'select',
+              '#options' => $rate_options,
+              '#empty_option' => t('- select rate -'),
+              '#default_value' => '',
+            );
+          }
+        }
+        elseif (isset($map->data[$property->property_id][$bat_type->type_id]['roomid']) && $map->data[$property->property_id][$bat_type->type_id]['roomid'] != 0) {
 
           $rate_options = array();
           // Create rate type options for use in form
@@ -889,6 +916,10 @@ function roomify_channel_bookingcom_admin_form($form, &$form_state, $property) {
     '#type' => 'submit',
     '#value' => t('Update Booking.Com Mapping'),
   );
+
+  if (!isset($map->external_property_id) && !isset($form_state['input']['roomify_channel_bookingcom_hotel_id_' . $property->property_id])) {
+    $form['actions']['submit']['#disabled'] = TRUE;
+  }
 
   if (isset($map->external_property_id)) {
     $form['actions']['remove'] = array(
