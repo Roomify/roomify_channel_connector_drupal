@@ -622,7 +622,11 @@ function roomify_channel_connector_rates($property_id, $room_id, $rate_id, $star
     foreach ($map->data as $property) {
       foreach ($property as $internal_rate_id =>  $rate_details) {
         if (($rate_details['standardrate'] == $rate_id) && $rate_details['roomid'] == $room_id) {
-          $roomify_rate_id = $internal_rate_id;
+          $roomify_room_id = $internal_rate_id;
+          $type = bat_type_load($roomify_room_id);
+          // GO get the correct rate using this type
+          $roomify_rate_id = roomify_channel_connector_get_standard_rate_for_type($roomify_room_id);
+          
         }
       }
     }
@@ -716,6 +720,23 @@ function roomify_channel_connector_roomify_channel_connector_channel($property) 
   return $content;
 }
 
+function roomify_channel_connector_get_standard_rate_for_type($type_id) {
+
+  // Retrieve the standard rate for the type in question
+  $efq = new EntityFieldQuery();
+  $efq->entityCondition('entity_type', 'roomify_rate')
+    ->fieldCondition('rate_bat_type_reference', 'target_id', $type_id, '=')
+    ->propertyCondition('name', 'Standard', '=');
+
+  $result = $efq->execute();
+  if (count($result)) {
+      $rate =  array_values($result['roomify_rate'])[0];
+      return $rate->rate_id;
+  }
+  else {
+    return NULL;
+  }
+}
 
 function roomify_channel_connector_get_map_internal($property_id, $bundle) {
 
