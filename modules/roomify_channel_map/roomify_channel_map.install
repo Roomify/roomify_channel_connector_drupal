@@ -11,7 +11,6 @@
 function roomify_channel_map_install() {
   // Create "Booking" channel map.
   roomify_channel_map_create_bookingcom_type();
-
 }
 
 /**

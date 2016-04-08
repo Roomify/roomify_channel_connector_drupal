@@ -403,5 +403,4 @@ function roomify_channel_map_entity_insert($entity, $type) {
     //roomify_channel_map_add_bat_type_reference_field($entity->type);
     //roomify_channel_map_add_channel_map_restriction_reference_field($entity->type);
   }
-
 }
