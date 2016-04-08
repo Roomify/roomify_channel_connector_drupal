@@ -39,23 +39,30 @@ function roomify_channel_connector_default_services_endpoint() {
     ),
   );
   $endpoint->resources = array(
-    'rcc-availability' => array(
+    'channel-availability' => array(
       'operations' => array(
         'index' => array(
           'enabled' => '1',
         ),
       ),
     ),
-    'rcc-rates' => array(
+    'channel-rates' => array(
       'operations' => array(
         'index' => array(
           'enabled' => '1',
         ),
       ),
     ),
-    'rcc-reservation' => array(
+    'channel-reservation' => array(
       'operations' => array(
         'create' => array(
+          'enabled' => '1',
+        ),
+      ),
+    ),
+    'type-availability' => array(
+      'operations' => array(
+        'index' => array(
           'enabled' => '1',
         ),
       ),
@@ -85,7 +92,9 @@ function roomify_channel_connector_default_services_endpoint() {
     ),
   );
   $endpoint->debug = 0;
-  $export['roomify_channel_bcom'] = $endpoint;
+
+
+  $export['roomify_channel_connector'] = $endpoint;
 
   return $export;
 }
