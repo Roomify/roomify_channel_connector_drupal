@@ -11,7 +11,7 @@ use Roomify\Bat\Unit\Unit;
 
 include_once 'roomify_channel_connector.features.inc';
 
-define('CM_URL', 'https://cm.roomify.us/');
+define('CM_URL', 'https://rcc.app/');
 
 /**
  * Implements hook_menu().
@@ -992,7 +992,7 @@ function roomify_channel_connector_notify_change($entity) {
       $room_changed = $map->data[$internal_id][$bat_type->type_id]['roomid'];
 
       $message = array(
-        'site_id' => variable_get('roomify_channel_connector_site_id');
+        'site_id' => variable_get('roomify_channel_connector_site_id'),
         'h_id' => $external_id,
         'rate_id' => $rate_changed,
         'room_id' => $room_changed,
