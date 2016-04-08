@@ -11,7 +11,7 @@ use Roomify\Bat\Unit\Unit;
 
 include_once 'roomify_channel_connector.features.inc';
 
-define('CM_URL', 'https://rcc.app/');
+define('CM_URL', 'https://cm.roomify.us/');
 
 /**
  * Implements hook_menu().
