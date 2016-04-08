@@ -662,59 +662,6 @@ function roomify_channel_connector_rates($property_id, $room_id, $rate_id, $star
   return $final_message;
 }
 
-function roomify_channel_connector_entity_update($entity, $type) {
-  if ($type == 'bat_event' && $entity->type == 'pricing') {
-    dpm($entity);
-  }
-}
-
-
-function roomify_channel_connector_get_type_id($property_id, $room_id) {
-  // Check if we are dealing with an existing reservation
-  $efq = new EntityFieldQuery();
-  $efq->entityCondition('entity_type', 'roomify_channel_map')
-    ->entityCondition('bundle', 'booking_com', '=')
-    ->propertyCondition('external_property_id', $property_id , '=');
-
-  $result = $efq->execute();
-
-  foreach ($result['roomify_channel_map'] as $id => $map) {
-    $cm = roomify_channel_map_load($map->channel_map_id);
-    //unserialize();
-    foreach ($cm->field_bcom_room_mapping[LANGUAGE_NONE] as $room_mapping) {
-      $mapping = unserialize($room_mapping['composed']);
-      if ($mapping[2] == $room_id) {
-        return $mapping[1];
-      }
-    }
-  }
-  return null;
-}
-
-function roomify_channel_connector_get_rate_id($property_id, $room_id, $rate_id) {
-
-  // Check if we are dealing with an existing reservation
-  $efq = new EntityFieldQuery();
-  $efq->entityCondition('entity_type', 'roomify_channel_map')
-    ->entityCondition('bundle', 'booking_com', '=')
-    ->propertyCondition('name', $property_id, '=');
-
-  $result = $efq->execute();
-
-  foreach ($result['roomify_channel_map'] as $id => $map) {
-    $cm = roomify_channel_map_load($map->channel_map_id);
-    //unserialize();
-    foreach ($cm->field_bcom_roomrate_mapping[LANGUAGE_NONE] as $roomrate_mapping) {
-      $mapping = unserialize($roomrate_mapping['composed']);
-      if ($mapping[3] == $room_id && $mapping[4] == $rate_id) {
-        return $mapping[2];
-      }
-    }
-  }
-
-  return null;
-}
-
 /**
  * Channel Management tab.
  */
@@ -1007,4 +954,58 @@ function roomify_channel_connector_get_bookingcom_ids($hotel_id) {
   }
 
   return FALSE;
+}
+
+function roomify_channel_connector_entity_update($entity, $type) {
+  if ($type == 'bat_event' && ($entity->type == 'pricing' || $entity->type == 'availability')) {
+    // Check if we have a site id (which implies we are connected)
+    if (variable_get('roomify_channel_connector_site_id') != '') {
+      roomify_channel_connector_notify_change($entity);
+    }
+  }
+}
+
+function roomify_channel_connector_entity_insert($entity, $type) {
+  if ($type == 'bat_event' && ($entity->type == 'pricing' || $entity->type == 'availability')) {
+    if (variable_get('roomify_channel_connector_site_id') != '') {
+      $entity->start_date_object = new DateTime($entity->start_date);
+      $entity->end_date_object = new DateTime($entity->end_date);
+      roomify_channel_connector_notify_change($entity);
+    }
+  }
+}
+
+function roomify_channel_connector_notify_change($entity) {
+  $rate = roomify_rate_load($entity->event_roomify_rate_reference[LANGUAGE_NONE][0]['target_id']);
+  if ($rate->type == 'standard') {
+    // Load the bat type associated with this rage
+    $bat_type = bat_type_load($rate->rate_bat_type_reference[LANGUAGE_NONE][0]['target_id']);
+    // using the property ID check if there is a booking.com mapping for this property
+    $map = roomify_channel_connector_get_map_internal($bat_type->field_st_property_reference[LANGUAGE_NONE][0]['target_id'], 'booking_com');
+    if ($map != FALSE) {
+      // A map is in place let us pull relevant rate info and sent to CM
+      $map = roomify_channel_map_load($map->channel_map_id);
+      $internal_id = $map->internal_property_id;
+      $external_id = $map->external_property_id;
+      // Get rate changes
+      $rate_changed = $map->data[$internal_id][$bat_type->type_id]['standardrate'];
+      $room_changed = $map->data[$internal_id][$bat_type->type_id]['roomid'];
+
+      $message = array(
+        'site_id' => variable_get('roomify_channel_connector_site_id');
+        'h_id' => $external_id,
+        'rate_id' => $rate_changed,
+        'room_id' => $room_changed,
+        'start_date' => $entity->start_date_object->format('Y-m-d'),
+        'end_date' => $entity->end_date_object->format('Y-m-d'),
+        'type' => $entity->type
+      );
+      $cm_url = CM_URL . 'bc/rate-change-notification?';
+      foreach ($message as $key => $value) {
+        $cm_url .= $key . '=' .$value . '&';
+      }
+      $request = drupal_http_request($cm_url);
+      $reply = json_decode($request->data);
+    }
+  }
 }
