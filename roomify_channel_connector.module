@@ -455,13 +455,25 @@ function roomify_channel_connector_create($reservations) {
  */
 function roomify_channel_connector_availability($property_id, $room_id, $rate_id, $start_date, $end_date) {
 
-  // First we should map the hotelid and roomid to a property and room
-  $roomify_room_id = roomify_channel_connector_get_type_id($property_id, $room_id, $rate_id);
-
-  if ($roomify_room_id == NULL) {
+  $map = roomify_channel_connector_get_map_external($property_id, 'booking_com');
+  $roomify_room_id = 0;
+  if ($map != FALSE) {
+    // Load the map
+    $map = roomify_channel_map_load($map->channel_map_id);
+    foreach ($map->data as $property) {
+      foreach ($property as $internal_rate_id =>  $rate_details) {
+        if (($rate_details['standardrate'] == $rate_id) && $rate_details['roomid'] == $room_id) {
+          $roomify_room_id = $internal_rate_id;
+        }
+      }
+    }
+  } else {
     return '';
   }
 
+  if ($roomify_room_id == 0) {
+    exit;
+  }
   // Assuming we have that then we load all the units associated with that type
   $controller = entity_get_controller('bat_unit');
 
@@ -635,9 +647,6 @@ function roomify_channel_connector_rates($property_id, $room_id, $rate_id, $star
     return '';
   }
 
-  // First we should map the hotelid and roomid to a property and room
-  //@TODO - create the ChannelMap entity so that given a hotel_id, room_id and rate_id we can retrieve the correct
-  // rooms and rate. That should lead us to a type and rate id.
   $currency_setting = commerce_currency_load(commerce_default_currency());
 
   $rate = roomify_rate_load($roomify_rate_id);
@@ -1122,31 +1131,60 @@ function roomify_channel_connector_get_bookingcom_ids($hotel_id) {
   return FALSE;
 }
 
+/**
+ * Implements hook_entity_update.
+ *
+ * When an event entity is updated check if we need to notify a channel about the change.
+ * @param $entity
+ * @param $type
+ */
 function roomify_channel_connector_entity_update($entity, $type) {
   if ($type == 'bat_event' && ($entity->type == 'pricing' || $entity->type == 'availability')) {
     // Check if we have a site id (which implies we are connected)
     if (variable_get('roomify_channel_connector_site_id') != '') {
-      roomify_channel_connector_notify_change($entity);
+      roomify_channel_connector_notify_change($entity, $entity->type);
     }
   }
 }
 
+/**
+ * Implements hook_entity_insert.
+ *
+ * When an event entity is created check if we need to notify a channel about the change.
+ * @param $entity
+ * @param $type
+ */
 function roomify_channel_connector_entity_insert($entity, $type) {
   if ($type == 'bat_event' && ($entity->type == 'pricing' || $entity->type == 'availability')) {
     if (variable_get('roomify_channel_connector_site_id') != '') {
       $entity->start_date_object = new DateTime($entity->start_date);
       $entity->end_date_object = new DateTime($entity->end_date);
-      roomify_channel_connector_notify_change($entity);
+      roomify_channel_connector_notify_change($entity, $entity->type);
     }
   }
 }
 
-function roomify_channel_connector_notify_change($entity) {
-  $rate = roomify_rate_load($entity->event_roomify_rate_reference[LANGUAGE_NONE][0]['target_id']);
-  if ($rate->type == 'standard') {
-    // Load the bat type associated with this rage
-    $bat_type = bat_type_load($rate->rate_bat_type_reference[LANGUAGE_NONE][0]['target_id']);
-    // using the property ID check if there is a booking.com mapping for this property
+function roomify_channel_connector_notify_change($entity, $type) {
+  $bat_type == FALSE;
+
+  // Try to get the correct bat_type which will lead us
+  if ($type == 'pricing') {
+    $rate = roomify_rate_load($entity->event_roomify_rate_reference[LANGUAGE_NONE][0]['target_id']);
+    if ($rate->type == 'standard') {
+      // Load the bat type associated with this rage
+      $bat_type = bat_type_load($rate->rate_bat_type_reference[LANGUAGE_NONE][0]['target_id']);
+    }
+  } elseif ($type == 'availability' ) {
+    $unit = bat_unit_load($entity->event_bat_unit_reference[LANGUAGE_NONE][0]['target_id']);
+    if ($unit != FALSE) {
+      // Get the type id
+      $type_id = $unit->type_id;
+      $bat_type = bat_type_load($type_id);
+    }
+  }
+
+  if ($bat_type != FALSE) {
+    // With a bat type in place let us process to load the map
     $map = roomify_channel_connector_get_map_internal($bat_type->field_st_property_reference[LANGUAGE_NONE][0]['target_id'], 'booking_com');
     if ($map != FALSE) {
       // A map is in place let us pull relevant rate info and sent to CM
@@ -1154,8 +1192,8 @@ function roomify_channel_connector_notify_change($entity) {
       $internal_id = $map->internal_property_id;
       $external_id = $map->external_property_id;
       // Get rate changes
-      $rate_changed = $map->data[$internal_id][$bat_type->type_id]['standardrate'];
       $room_changed = $map->data[$internal_id][$bat_type->type_id]['roomid'];
+      $rate_changed = $map->data[$internal_id][$bat_type->type_id]['standardrate'];
 
       $message = array(
         'site_id' => variable_get('roomify_channel_connector_site_id'),
@@ -1166,12 +1204,12 @@ function roomify_channel_connector_notify_change($entity) {
         'end_date' => $entity->end_date_object->format('Y-m-d'),
         'type' => $entity->type
       );
-      $cm_url = CM_URL . 'bc/rate-change-notification?';
-      foreach ($message as $key => $value) {
-        $cm_url .= $key . '=' . $value . '&';
-      }
-      $request = drupal_http_request($cm_url);
-      $reply = json_decode($request->data);
+        $cm_url = CM_URL . 'bc/rate-change-notification?';
+        foreach ($message as $key => $value) {
+          $cm_url .= $key . '=' . $value . '&';
+        }
+        $request = drupal_http_request($cm_url);
+        $reply = json_decode($request->data);
     }
   }
 }
