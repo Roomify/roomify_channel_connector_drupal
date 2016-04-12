@@ -729,6 +729,12 @@ function roomify_channel_connector_roomify_channel_connector_channel($property) 
   return $content;
 }
 
+/**
+ * Given a type id returns the appropriate rate
+ *
+ * @param $type_id
+ * @return null
+ */
 function roomify_channel_connector_get_standard_rate_for_type($type_id) {
 
   // Retrieve the standard rate for the type in question
@@ -747,6 +753,13 @@ function roomify_channel_connector_get_standard_rate_for_type($type_id) {
   }
 }
 
+/**
+ * Returns a map based on the ID of a native Roomify property
+ *
+ * @param $property_id
+ * @param $bundle
+ * @return bool
+ */
 function roomify_channel_connector_get_map_internal($property_id, $bundle) {
 
   // Check if we have an existing map
@@ -765,6 +778,12 @@ function roomify_channel_connector_get_map_internal($property_id, $bundle) {
   }
 }
 
+/**
+ * Returns a map based on the ID of an external property (i.e. the Booking.com property id)
+ * @param $property_id
+ * @param $bundle
+ * @return bool
+ */
 function roomify_channel_connector_get_map_external($property_id, $bundle) {
 
   // Check if we have an existing map
@@ -1155,6 +1174,7 @@ function roomify_channel_connector_entity_update($entity, $type) {
  * @param $type
  */
 function roomify_channel_connector_entity_insert($entity, $type) {
+  // Adding a new pricing or availability event
   if ($type == 'bat_event' && ($entity->type == 'pricing' || $entity->type == 'availability')) {
     if (variable_get('roomify_channel_connector_site_id') != '') {
       $entity->start_date_object = new DateTime($entity->start_date);
@@ -1162,9 +1182,20 @@ function roomify_channel_connector_entity_insert($entity, $type) {
       roomify_channel_connector_notify_change($entity, $entity->type);
     }
   }
+
+  // We are adding more units so need to tell CM about that
+  if ($type == 'bat_unit') {
+    // When a new unit is added we resend availability information for the year to Booking.com
+    if (variable_get('roomify_channel_connector_site_id') != '') {
+      $start_date = new DateTime();
+      $end_date = clone $start_date;
+      $end_date->add(new DateInterval('P1Y'));
+      roomify_channel_connector_notify_change($entity, 'new_unit', $start_date, $end_date);
+    }
+  }
 }
 
-function roomify_channel_connector_notify_change($entity, $type) {
+function roomify_channel_connector_notify_change($entity, $type, $start_date = NULL, $end_date = NULL) {
   $bat_type == FALSE;
 
   // Try to get the correct bat_type which will lead us
@@ -1181,6 +1212,10 @@ function roomify_channel_connector_notify_change($entity, $type) {
       $type_id = $unit->type_id;
       $bat_type = bat_type_load($type_id);
     }
+  } elseif ($type == 'new_unit') {
+    // Get the type id
+    $type_id = $entity->type_id;
+    $bat_type = bat_type_load($type_id);
   }
 
   if ($bat_type != FALSE) {
@@ -1200,9 +1235,9 @@ function roomify_channel_connector_notify_change($entity, $type) {
         'h_id' => $external_id,
         'rate_id' => $rate_changed,
         'room_id' => $room_changed,
-        'start_date' => $entity->start_date_object->format('Y-m-d'),
-        'end_date' => $entity->end_date_object->format('Y-m-d'),
-        'type' => $entity->type
+        'start_date' => isset($start_date) ? $start_date->format('Y-m-d') : $entity->start_date_object->format('Y-m-d'),
+        'end_date' => isset($end_date) ? $end_date->format('Y-m-d') : $entity->end_date_object->format('Y-m-d'),
+        'type' => ($entity->type == 'default') ? 'availability' : $entity->type,
       );
         $cm_url = CM_URL . 'bc/rate-change-notification?';
         foreach ($message as $key => $value) {
