@@ -1195,6 +1195,26 @@ function roomify_channel_connector_entity_insert($entity, $type) {
   }
 }
 
+function roomify_channel_connector_entity_delete($entity, $type) {
+  // Adding a new pricing or availability event
+  if ($type == 'bat_event' && ($entity->type == 'pricing' || $entity->type == 'availability')) {
+    if (variable_get('roomify_channel_connector_site_id') != '') {
+      roomify_channel_connector_notify_change($entity, $entity->type);
+    }
+  }
+
+  // We are adding more units so need to tell CM about that
+  if ($type == 'bat_unit') {
+    // When a new unit is added we resend availability information for the year to Booking.com
+    if (variable_get('roomify_channel_connector_site_id') != '') {
+      $start_date = new DateTime();
+      $end_date = clone $start_date;
+      $end_date->add(new DateInterval('P1Y'));
+      roomify_channel_connector_notify_change($entity, 'new_unit', $start_date, $end_date);
+    }
+  }
+}
+
 function roomify_channel_connector_notify_change($entity, $type, $start_date = NULL, $end_date = NULL) {
   $bat_type == FALSE;
 
