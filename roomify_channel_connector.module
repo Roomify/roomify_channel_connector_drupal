@@ -400,12 +400,13 @@ function roomify_channel_connector_create($reservations) {
           'uid' => $event->uid,
           'created' => strtotime($created_time),
         ));
+        $booking->booking_event_reference[LANGUAGE_NONE][0]['target_id'] = $event->event_id;
         watchdog('Channel Manager', 'Booking.com reservation ' . $room['roomreservation_id'] . ' created', array(), WATCHDOG_INFO);
         $reply[] = 'Booking.com reservation ' . $room['roomreservation_id'] . ' created';
 
       }
 
-      $booking->booking_event_reference[LANGUAGE_NONE][0]['target_id'] = $event->event_id;
+
 
       $booking->field_bcom_room_reservation_id[LANGUAGE_NONE][0]['value'] = $room['roomreservation_id'];
 
@@ -1313,9 +1314,10 @@ function roomify_channel_connector_notify_change($entity, $type, $start_date = N
         $room_changed,
         isset($start_date) ? $start_date->format('Y-m-d') : $entity->start_date_object->format('Y-m-d'),
         isset($end_date) ? $end_date->format('Y-m-d') : $entity->end_date_object->format('Y-m-d'),
-        ($entity->type == 'default' || $type == 'setup') ? 'availability' : 'rates'
+        ($entity->type == 'default' || $type == 'setup' || $type == 'availability') ? 'availability' : 'rates'
       );
 
+      // If we are in setup we would have sent an availability notification so lets go ahead and send a rates one as well.
       if ($type == 'setup') {
         roomify_channel_connector_send_notification(
           variable_get('roomify_channel_connector_site_id'),
