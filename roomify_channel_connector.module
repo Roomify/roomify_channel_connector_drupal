@@ -336,9 +336,6 @@ function roomify_channel_connector_create($reservations) {
     // Now we move on with dealing with reservation data knowing that we may be creating or modifying existing rooms or dealing with
     // a new reservation.
     foreach ($reservation['rooms'] as $room) {
-      global $user;
-
-
       // Check if we are dealing with an existing reservation
       $efq = new EntityFieldQuery();
       $efq->entityCondition('entity_type', 'bat_booking')
@@ -357,17 +354,58 @@ function roomify_channel_connector_create($reservations) {
         $reply[] = 'Booking.com reservation ' . $room['roomreservation_id'] . ' updated';
       }
       else {
-        // Create a new booking.
+        // Need to gear up to create a new booking.
+        // First thing is to locate the unit to place the booking in
+
+        // Get the channel map
+        $map = roomify_channel_connector_get_map_external($reservation['hotel_id'], 'booking_com');
+        if ($map == FALSE) {
+          watchdog('Channel Manager', 'Booking.com reservation ' . $room['roomreservation_id'] . ' cannot be saved as no matching property exists.', array(), WATCHDOG_INFO);
+          $reply[] = 'Booking.com reservation ' . $room['roomreservation_id'] . ' was not saved';
+          return drupal_json_encode($reply);
+        } else {
+          $map = roomify_channel_map_load($map->channel_map_id);
+        }
+
+        // If we are still here then we can go ahead and get the relevant type
+        foreach ($map->data as $property => $type_map) {
+          foreach ($type_map as $type_id => $map) {
+            if ($room['id'] == $map['roomid']) {
+              $type = bat_type_load($type_id);
+            }
+          }
+        }
+
+        if (!isset($type)) {
+          watchdog('Channel Manager', 'Booking.com reservation ' . $room['roomreservation_id'] . ' cannot be saved as no matching room type exists.', array(), WATCHDOG_INFO);
+          $reply[] = 'Booking.com reservation ' . $room['roomreservation_id'] . ' was not saved';
+          return drupal_json_encode($reply);
+        }
+
+        // Attempt to create an event (i.e. find an available unit and create event)
+        $event = roomify_channel_connector_create_reservation_event($room['arrival_date'], $room['departure_date'], $type);
+
+        // If no valid units ids were found stop here.
+        if ($event == FALSE) {
+          watchdog('Channel Manager', 'Booking.com reservation ' . $room['roomreservation_id'] . ' cannot be saved as available units found.', array(), WATCHDOG_INFO);
+          $reply[] = 'Booking.com reservation ' . $room['roomreservation_id'] . ' was not saved';
+          return drupal_json_encode($reply);
+        }
+
+
         $created_time = $reservation['date'] . ' ' . $reservation['time'];
+        
         $booking = bat_booking_create(array(
           'type' => 'booking_com',
-          'uid' => $user->uid,
+          'uid' => $event->uid,
           'created' => strtotime($created_time),
         ));
         watchdog('Channel Manager', 'Booking.com reservation ' . $room['roomreservation_id'] . ' created', array(), WATCHDOG_INFO);
         $reply[] = 'Booking.com reservation ' . $room['roomreservation_id'] . ' created';
 
       }
+
+      $booking->booking_event_reference[LANGUAGE_NONE][0]['target_id'] = $event->event_id;
 
       $booking->field_bcom_room_reservation_id[LANGUAGE_NONE][0]['value'] = $room['roomreservation_id'];
 
@@ -1268,7 +1306,7 @@ function roomify_channel_connector_notify_change($entity, $type, $start_date = N
       // Get rate changes
       $room_changed = $map->data[$internal_id][$bat_type->type_id]['roomid'];
       $rate_changed = $map->data[$internal_id][$bat_type->type_id]['standardrate'];
-      roomify_channel_connector_send_bcom_notification(
+      roomify_channel_connector_send_notification(
         variable_get('roomify_channel_connector_site_id'),
         $external_id,
         $rate_changed,
@@ -1279,7 +1317,7 @@ function roomify_channel_connector_notify_change($entity, $type, $start_date = N
       );
 
       if ($type == 'setup') {
-        roomify_channel_connector_send_bcom_notification(
+        roomify_channel_connector_send_notification(
           variable_get('roomify_channel_connector_site_id'),
           $external_id,
           $rate_changed,
@@ -1293,7 +1331,7 @@ function roomify_channel_connector_notify_change($entity, $type, $start_date = N
   }
 }
 
-function roomify_channel_connector_send_bcom_notification($site_id, $h_id, $rate_id, $room_id, $start_date, $end_date, $type) {
+function roomify_channel_connector_send_notification($site_id, $h_id, $rate_id, $room_id, $start_date, $end_date, $type) {
   $message = array(
     'site_id' => $site_id,
     'h_id' => $h_id,
@@ -1309,4 +1347,39 @@ function roomify_channel_connector_send_bcom_notification($site_id, $h_id, $rate
   }
   $request = drupal_http_request($cm_url);
   $reply = json_decode($request->data);
+}
+
+function roomify_channel_connector_create_reservation_event($arrival, $departure, $type) {
+  $event_type = 'availability';
+
+  $start_date = new DateTime($arrival);
+  $end_date = new DateTime($departure);
+  $end_date->sub(new DateInterval('PT1M'));
+
+  $property = roomify_property_load($type->field_st_property_reference[LANGUAGE_NONE][0]['target_id']);
+
+
+  $valid_unit_ids = bat_event_get_matching_units($start_date, $end_date, array(AVAILABLE), $type->type_id, 'availability');
+
+  if ($valid_unit_ids === FALSE) {
+    return FALSE;
+  }
+  else {
+    // Create a new Event.
+    $event = bat_event_create(array(
+      'type' => $event_type,
+      'start_date' => $start_date->format('Y-m-d H:i:s'),
+      'end_date' => $end_date->format('Y-m-d H:i:s'),
+      'uid' => $type->uid,
+      'created' => REQUEST_TIME,
+    ));
+
+    $event->event_bat_unit_reference[LANGUAGE_NONE][0]['target_id'] = reset($valid_unit_ids);
+
+    $booked_state = bat_event_load_state_by_machine_name(BOOKED);
+    $event->event_state_reference[LANGUAGE_NONE][0]['state_id'] = $booked_state['id'];
+
+    $event->save();
+    return $event;
+  }
 }
