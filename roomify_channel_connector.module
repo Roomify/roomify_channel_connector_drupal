@@ -1124,7 +1124,10 @@ function roomify_channel_bookingcom_admin_form_submit(&$form, &$form_state) {
     if (isset($k[3]) && $k[3]=='standardrate') {
       if ($value != 0) {
         $map->data[$k[4]][$k[5]]['standardrate'] = $value;
-        entity_save('roomify_channel_map', $map);
+        $start_date = new DateTime('now');
+        $end_date = clone $start_date;
+        $end_date->add(new DateInterval('P1Y'));
+        roomify_channel_connector_notify_change($k[5], 'setup', $start_date, $end_date);
       }
     }
   }
@@ -1215,6 +1218,19 @@ function roomify_channel_connector_entity_delete($entity, $type) {
   }
 }
 
+/**
+ * Defines the rate change notification method. There are four possibilities:
+ * 1. $type = pricing : A pricing event has happened by changing a pricing event entity
+ * 2. $type = availability : An availability event has happened by changing an availabiilty event entity
+ * 3. $type = default - A default type indicates a new unit being setup.
+ * 4. $type = setup - indicates that a channel map was just saved so we need to resend all availability data in
+ * case things changed.
+ *
+ * @param $entity
+ * @param $type
+ * @param null $start_date
+ * @param null $end_date
+ */
 function roomify_channel_connector_notify_change($entity, $type, $start_date = NULL, $end_date = NULL) {
   $bat_type == FALSE;
 
@@ -1236,6 +1252,9 @@ function roomify_channel_connector_notify_change($entity, $type, $start_date = N
     // Get the type id
     $type_id = $entity->type_id;
     $bat_type = bat_type_load($type_id);
+  } else if ($type == 'setup') {
+    // In the setup we send the rate entity id directly
+    $bat_type = bat_type_load($entity);
   }
 
   if ($bat_type != FALSE) {
@@ -1249,22 +1268,45 @@ function roomify_channel_connector_notify_change($entity, $type, $start_date = N
       // Get rate changes
       $room_changed = $map->data[$internal_id][$bat_type->type_id]['roomid'];
       $rate_changed = $map->data[$internal_id][$bat_type->type_id]['standardrate'];
-
-      $message = array(
-        'site_id' => variable_get('roomify_channel_connector_site_id'),
-        'h_id' => $external_id,
-        'rate_id' => $rate_changed,
-        'room_id' => $room_changed,
-        'start_date' => isset($start_date) ? $start_date->format('Y-m-d') : $entity->start_date_object->format('Y-m-d'),
-        'end_date' => isset($end_date) ? $end_date->format('Y-m-d') : $entity->end_date_object->format('Y-m-d'),
-        'type' => ($entity->type == 'default') ? 'availability' : $entity->type,
+      roomify_channel_connector_send_bcom_notification(
+        variable_get('roomify_channel_connector_site_id'),
+        $external_id,
+        $rate_changed,
+        $room_changed,
+        isset($start_date) ? $start_date->format('Y-m-d') : $entity->start_date_object->format('Y-m-d'),
+        isset($end_date) ? $end_date->format('Y-m-d') : $entity->end_date_object->format('Y-m-d'),
+        ($entity->type == 'default' || $type == 'setup') ? 'availability' : 'rates'
       );
-        $cm_url = CM_URL . 'bc/rate-change-notification?';
-        foreach ($message as $key => $value) {
-          $cm_url .= $key . '=' . $value . '&';
-        }
-        $request = drupal_http_request($cm_url);
-        $reply = json_decode($request->data);
+
+      if ($type == 'setup') {
+        roomify_channel_connector_send_bcom_notification(
+          variable_get('roomify_channel_connector_site_id'),
+          $external_id,
+          $rate_changed,
+          $room_changed,
+          isset($start_date) ? $start_date->format('Y-m-d') : $entity->start_date_object->format('Y-m-d'),
+          isset($end_date) ? $end_date->format('Y-m-d') : $entity->end_date_object->format('Y-m-d'),
+          'rates'
+        );
+      }
     }
   }
+}
+
+function roomify_channel_connector_send_bcom_notification($site_id, $h_id, $rate_id, $room_id, $start_date, $end_date, $type) {
+  $message = array(
+    'site_id' => $site_id,
+    'h_id' => $h_id,
+    'rate_id' => $rate_id,
+    'room_id' => $room_id,
+    'start_date' => $start_date,
+    'end_date' => $end_date,
+    'type' => $type,
+  );
+  $cm_url = CM_URL . 'bc/rate-change-notification?';
+  foreach ($message as $key => $value) {
+    $cm_url .= $key . '=' . $value . '&';
+  }
+  $request = drupal_http_request($cm_url);
+  $reply = json_decode($request->data);
 }
