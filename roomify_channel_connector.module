@@ -1206,6 +1206,16 @@ function roomify_channel_connector_entity_update($entity, $type) {
       roomify_channel_connector_notify_change($entity, $entity->type);
     }
   }
+  if ($type == 'roomify_rate' && $entity->name == 'Standard') {
+    // Check if we have a site id (which implies we are connected)
+    if (variable_get('roomify_channel_connector_site_id') != '') {
+      $start_date = new DateTime();
+      $end_date = clone $start_date;
+      $end_date->add(new DateInterval('P1Y'));
+
+      roomify_channel_connector_notify_change($entity, $type, $start_date, $end_date);
+    }
+  }
 }
 
 /**
@@ -1274,27 +1284,38 @@ function roomify_channel_connector_notify_change($entity, $type, $start_date = N
   $bat_type == FALSE;
 
   // Try to get the correct bat_type which will lead us
-  if ($type == 'pricing') {
-    $rate = roomify_rate_load($entity->event_roomify_rate_reference[LANGUAGE_NONE][0]['target_id']);
-    if ($rate->type == 'standard') {
-      // Load the bat type associated with this rage
-      $bat_type = bat_type_load($rate->rate_bat_type_reference[LANGUAGE_NONE][0]['target_id']);
-    }
-  } elseif ($type == 'availability' ) {
-    $unit = bat_unit_load($entity->event_bat_unit_reference[LANGUAGE_NONE][0]['target_id']);
-    if ($unit != FALSE) {
-      // Get the type id
-      $type_id = $unit->type_id;
+
+  switch ($type) {
+    case 'pricing':
+      $rate = roomify_rate_load($entity->event_roomify_rate_reference[LANGUAGE_NONE][0]['target_id']);
+      if ($rate->type == 'standard') {
+        // Load the bat type associated with this rage
+        $bat_type = bat_type_load($rate->rate_bat_type_reference[LANGUAGE_NONE][0]['target_id']);
+      }
+      break;
+    case 'availability':
+      // Availability events need that minute added back
+      $entity->end_date_object->add(new DateInterval('PT1M'));
+      $unit = bat_unit_load($entity->event_bat_unit_reference[LANGUAGE_NONE][0]['target_id']);
+      if ($unit != FALSE) {
+        // Get the type id
+        $type_id = $unit->type_id;
+        $bat_type = bat_type_load($type_id);
+      }
+      break;
+    case 'new_unit':
+      $type_id = $entity->type_id;
       $bat_type = bat_type_load($type_id);
-    }
-  } elseif ($type == 'new_unit') {
-    // Get the type id
-    $type_id = $entity->type_id;
-    $bat_type = bat_type_load($type_id);
-  } else if ($type == 'setup') {
-    // In the setup we send the rate entity id directly
-    $bat_type = bat_type_load($entity);
+      break;
+    case 'setup':
+      // In the setup we send the rate entity id directly
+      $bat_type = bat_type_load($entity);
+      break;
+    case 'roomify_rate':
+      $bat_type = bat_type_load($entity->rate_bat_type_reference[LANGUAGE_NONE][0]['target_id']);
+      break;
   }
+
 
   if ($bat_type != FALSE) {
     // With a bat type in place let us process to load the map
