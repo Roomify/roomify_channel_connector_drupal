@@ -283,7 +283,10 @@ function roomify_channel_connector_create($reservations) {
           $cm_room = bat_booking_load($key);
           $cm_room->field_bcom_status[LANGUAGE_NONE][0]['value'] = "cancelled";
           $cm_room->field_bcom_cancellation_fee[LANGUAGE_NONE][0]['value'] = $reservation['total_cancellation_fee'];
-
+          $event = bat_event_load($cm_room->booking_event_reference[LANGUAGE_NONE][0]['target_id']);
+          $available_state = bat_event_load_state_by_machine_name(AVAILABLE);
+          $event->event_state_reference[LANGUAGE_NONE][0]['state_id'] = $available_state['id'];
+          $event->save();
           $cm_room->save();
           watchdog('Channel Manager', 'Booking.com reservation ' . $reservation['id'] . ' cancelled', array(), WATCHDOG_INFO);
           $reply[] = 'Booking.com reservation ' . $reservation['id'] . ' cancelled';
@@ -322,6 +325,11 @@ function roomify_channel_connector_create($reservations) {
           }
           else {
             $cm_room->field_bcom_status[LANGUAGE_NONE][0]['value'] = "cancelled";
+            // Load the event and set it to available
+            $event = bat_event_load($cm_room->booking_event_reference[LANGUAGE_NONE][0]['target_id']);
+            $available_state = bat_event_load_state_by_machine_name(AVAILABLE);
+            $event->event_state_reference[LANGUAGE_NONE][0]['state_id'] = $available_state['id'];
+            $event->save();
             $cm_room->save();
             watchdog('Channel Manager', 'Booking.com room reservation ' . $cm_room->field_bcom_room_reservation_id[LANGUAGE_NONE][0]['value'] . ' cancelled', array(), WATCHDOG_INFO);
             $reply[] = 'Booking.com room reservation ' . $cm_room->field_bcom_room_reservation_id[LANGUAGE_NONE][0]['value'] . ' cancelled';
