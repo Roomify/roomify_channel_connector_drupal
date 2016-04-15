@@ -313,15 +313,16 @@ function roomify_channel_connector_create($reservations) {
         // Cycle through the rooms coming from Booking.com
         $bookingrooms = array();
         foreach ($reservation['rooms'] as $room) {
-          $bookingrooms[$room['roomreservation_id']] = $room['roomreservation_id'];
+          $bookingrooms[] = $room['roomreservation_id'];
         }
 
         // Do a comparison between room info we got and room info that we have and set any rooms that got cancelled
         foreach ($bookings['bat_booking'] as $key => $booking) {
           $cm_room = bat_booking_load($key);
           // Check if the booking still exists
-          if (isset($bookingrooms[$cm_room->field_bcom_room_reservation_id[LANGUAGE_NONE][0]['value']])) {
-            // we are good room is still there
+          $room_res_id = $cm_room->field_bcom_room_reservation_id[LANGUAGE_NONE][0]['value'];
+          if (in_array($room_res_id, $bookingrooms)) {
+            // We are good room is still there.
           }
           else {
             $cm_room->field_bcom_status[LANGUAGE_NONE][0]['value'] = "cancelled";
@@ -358,6 +359,27 @@ function roomify_channel_connector_create($reservations) {
         $booking = bat_booking_load($return);
         $updated_time = $reservation['date'] . ' ' . $reservation['time'];
         $booking->changed = strtotime($updated_time);
+
+        // Dates may have changed so reset the event
+        $booking->field_bcom_status[LANGUAGE_NONE][0]['value'] = "modified";
+
+        // Dates may have changed so reset the existing event
+        $event = bat_event_load($booking->booking_event_reference[LANGUAGE_NONE][0]['target_id']);
+        $available_state = bat_event_load_state_by_machine_name(AVAILABLE);
+        $event->event_state_reference[LANGUAGE_NONE][0]['state_id'] = $available_state['id'];
+        $event->save();
+
+        // Create a new event (i.e. find an available unit and create event)
+        $type = roomify_channel_connector_get_type_from_map($reservation['hotel_id'], $booking->field_bcom_room_id[LANGUAGE_NONE][0]['value'], 'booking_com');
+
+        if ($type == FALSE) {
+          watchdog('Channel Manager', 'Booking.com reservation ' . $room['roomreservation_id'] . ' cannot be saved as no matching room type exists.', array(), WATCHDOG_INFO);
+          $reply[] = 'Booking.com reservation ' . $room['roomreservation_id'] . ' was not saved';
+          return drupal_json_encode($reply);
+        }
+
+        $new_event = roomify_channel_connector_create_reservation_event($room['arrival_date'], $room['departure_date'], $type);
+        $booking->booking_event_reference[LANGUAGE_NONE][0]['target_id'] = $new_event->event_id;
         watchdog('Channel Manager', 'Booking.com reservation ' . $room['roomreservation_id'] . ' updated', array(), WATCHDOG_INFO);
         $reply[] = 'Booking.com reservation ' . $room['roomreservation_id'] . ' updated';
       }
@@ -365,26 +387,10 @@ function roomify_channel_connector_create($reservations) {
         // Need to gear up to create a new booking.
         // First thing is to locate the unit to place the booking in
 
-        // Get the channel map
-        $map = roomify_channel_connector_get_map_external($reservation['hotel_id'], 'booking_com');
-        if ($map == FALSE) {
-          watchdog('Channel Manager', 'Booking.com reservation ' . $room['roomreservation_id'] . ' cannot be saved as no matching property exists.', array(), WATCHDOG_INFO);
-          $reply[] = 'Booking.com reservation ' . $room['roomreservation_id'] . ' was not saved';
-          return drupal_json_encode($reply);
-        } else {
-          $map = roomify_channel_map_load($map->channel_map_id);
-        }
+        // Get the room type
+        $type = roomify_channel_connector_get_type_from_map($reservation['hotel_id'], $room['id'], 'booking_com');
 
-        // If we are still here then we can go ahead and get the relevant type
-        foreach ($map->data as $property => $type_map) {
-          foreach ($type_map as $type_id => $map) {
-            if ($room['id'] == $map['roomid']) {
-              $type = bat_type_load($type_id);
-            }
-          }
-        }
-
-        if (!isset($type)) {
+        if ($type == FALSE) {
           watchdog('Channel Manager', 'Booking.com reservation ' . $room['roomreservation_id'] . ' cannot be saved as no matching room type exists.', array(), WATCHDOG_INFO);
           $reply[] = 'Booking.com reservation ' . $room['roomreservation_id'] . ' was not saved';
           return drupal_json_encode($reply);
@@ -464,6 +470,7 @@ function roomify_channel_connector_create($reservations) {
       // Add the customer data
       $booking->field_bcom_first_name[LANGUAGE_NONE][0]['value'] = $reservation['customer']['first_name'];
       $booking->field_bcom_last_name[LANGUAGE_NONE][0]['value'] = $reservation['customer']['last_name'];
+      $booking->label = 'Booking.com: ' . $reservation['customer']['first_name'] . ' ' . $reservation['customer']['last_name'];
       $booking->field_bcom_email[LANGUAGE_NONE][0]['value'] = $reservation['customer']['email'];
       $booking->field_bcom_telephone[LANGUAGE_NONE][0]['value'] = $reservation['customer']['telephone'];
       $booking->field_bcom_company[LANGUAGE_NONE][0]['value'] = $reservation['customer']['company'];
@@ -1289,7 +1296,7 @@ function roomify_channel_connector_entity_delete($entity, $type) {
  * @param null $end_date
  */
 function roomify_channel_connector_notify_change($entity, $type, $start_date = NULL, $end_date = NULL) {
-  $bat_type == FALSE;
+  $bat_type = FALSE;
 
   // Try to get the correct bat_type which will lead us
 
@@ -1432,4 +1439,25 @@ function roomify_channel_connector_default_cer() {
 }');
 
   return $items;
+}
+
+function roomify_channel_connector_get_type_from_map($property_id, $room_id, $map_type) {
+  // Get the channel map
+  $map = roomify_channel_connector_get_map_external($property_id, $map_type);
+  if ($map == FALSE) {
+    return FALSE;
+  } else {
+    $map = roomify_channel_map_load($map->channel_map_id);
+  }
+
+  // If we are still here then we can go ahead and get the relevant type
+  foreach ($map->data as $property => $type_map) {
+    foreach ($type_map as $type_id => $map) {
+      if ($room_id == $map['roomid']) {
+        return $type = bat_type_load($type_id);
+      }
+    }
+  }
+
+  return FALSE;
 }
