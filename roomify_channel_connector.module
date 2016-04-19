@@ -34,7 +34,8 @@ function roomify_channel_connector_menu() {
     'title' => 'Channel Management',
     'page callback' => 'roomify_channel_connector_management_tab',
     'page arguments' => array(5),
-    'access arguments' => array('manage property channels'),
+    'access callback' => 'roomify_channel_connector_management_tab_access',
+    'access arguments' => array(5),
     'type' => MENU_LOCAL_TASK,
     'weight' => '20',
   );
@@ -64,11 +65,21 @@ function roomify_channel_connector_permission() {
       'description' => t('Retrieve channel availability info'),
     ),
     'retrieve rate information' => array(
-    'title' => t('Retrieve channel rate info'),
-    'description' => t('Retrieve channel rate info'),
-  )
-
+      'title' => t('Retrieve channel rate info'),
+      'description' => t('Retrieve channel rate info'),
+    )
   );
+}
+
+/**
+ * Access callback for the 'Channel Management' tab.
+ */
+function roomify_channel_connector_management_tab_access($property) {
+  if ($property->type == 'casa_property' || $property->type == 'locanda_property') {
+    return user_access('manage property channels');
+  }
+
+  return FALSE;
 }
 
 /**
