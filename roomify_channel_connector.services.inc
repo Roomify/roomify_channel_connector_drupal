@@ -17,7 +17,11 @@ function roomify_channel_connector_default_services_endpoint() {
   $endpoint->server = 'rest_server';
   $endpoint->path = 'rcc';
   $endpoint->authentication = array(
-    'services' => 'services',
+    'services_api_key_auth' => array(
+      'api_key' => '123123',
+      'api_parameter_type' => 'HTTPHeader',
+      'user' => '',
+    ),
   );
   $endpoint->server_settings = array(
     'formatters' => array(
@@ -63,29 +67,6 @@ function roomify_channel_connector_default_services_endpoint() {
     'type-availability' => array(
       'operations' => array(
         'index' => array(
-          'enabled' => '1',
-        ),
-      ),
-    ),
-    'user' => array(
-      'actions' => array(
-        'login' => array(
-          'enabled' => '1',
-          'settings' => array(
-            'services' => array(
-              'resource_api_version' => '1.1',
-            ),
-          ),
-        ),
-        'logout' => array(
-          'enabled' => '1',
-          'settings' => array(
-            'services' => array(
-              'resource_api_version' => '1.1',
-            ),
-          ),
-        ),
-        'token' => array(
           'enabled' => '1',
         ),
       ),
