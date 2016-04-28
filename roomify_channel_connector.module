@@ -89,7 +89,7 @@ function roomify_channel_connector_management_tab_access($property) {
 function roomify_channel_connector_configuration_form($form, &$form_state) {
   if (variable_get('roomify_channel_connector_site_id', '') == '') {
     $form['intro'] = array(
-      '#markup' => '<h1 style="margin-bottom: 12px;">' . t('To setup channel management you just need to do the following:') . '</h1><h2 style="font-weight: 400;">' . t('- Request a Site ID / Token, Connector URL for channel management access from Roomify (email to hello@roomify.us)') . '</h2>',
+      '#markup' => '<h1 style="margin-bottom: 20px;">' . t('To setup channel management you just need to do the following:') . '</h1><h3 style="font-weight: 200;">' . t('Request a Site ID / Token, Connector URL for channel management access from Roomify (email hello@roomify.us)') . '</h3>',
     );
   }
 
