@@ -11,7 +11,6 @@ use Roomify\Bat\Unit\Unit;
 
 include_once 'roomify_channel_connector.features.inc';
 
-define('CM_URL', 'http://rcc.app/index_dev.php/');
 
 /**
  * Implements hook_menu().
@@ -75,8 +74,10 @@ function roomify_channel_connector_permission() {
  * Access callback for the 'Channel Management' tab.
  */
 function roomify_channel_connector_management_tab_access($property) {
-  if ($property->type == 'casa_property' || $property->type == 'locanda_property') {
-    return user_access('manage property channels');
+  if (variable_get('roomify_channel_connector_site_id') != '') {
+    if ($property->type == 'casa_property' || $property->type == 'locanda_property') {
+      return user_access('manage property channels');
+    }
   }
 
   return FALSE;
@@ -86,12 +87,19 @@ function roomify_channel_connector_management_tab_access($property) {
  * Module configuration form.
  */
 function roomify_channel_connector_configuration_form($form, &$form_state) {
+  if (variable_get('roomify_channel_connector_site_id', '') == '') {
+    $form['intro'] = array(
+      '#markup' => '<h1 style="margin-bottom: 12px;">' . t('To setup channel management you just need to do the following:') . '</h1><h2 style="font-weight: 400;">' . t('- Request a Site ID / Token, Connector URL for channel management access from Roomify (email to hello@roomify.us)') . '</h2>',
+    );
+  }
+
   $form['roomify_channel_connector_site_id'] = array(
     '#type' => 'textfield',
     '#title' => t('Roomify Site ID'),
     '#description' => t('Enter the Site ID you were given when subscribing to the Roomify channel management service.'),
     '#element_validate' => array('element_validate_integer_positive'),
-    '#default_value' => roomify_channel_connector_get_site_id(),
+    '#default_value' => variable_get('roomify_channel_connector_site_id', ''),
+    '#required' => TRUE,
   );
 
   $form['roomify_channel_connector_site_token'] = array(
@@ -99,9 +107,73 @@ function roomify_channel_connector_configuration_form($form, &$form_state) {
     '#title' => t('Roomify Site Token'),
     '#description' => t('Enter the Site Token you were given when subscribing to the Roomify channel management service.'),
     '#default_value' => variable_get('roomify_channel_connector_site_token', ''),
+    '#required' => TRUE,
   );
 
-  return system_settings_form($form);
+  $form['roomify_channel_connector_app_url'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Connect App URL'),
+    '#description' => t('Enter the Connect App URL you were given when subscribing to the Roomify channel management service.'),
+    '#default_value' => variable_get('roomify_channel_connector_app_url', ''),
+    '#required' => TRUE,
+  );
+
+  if (variable_get('roomify_channel_connector_site_id', '') == '') {
+    $form['submit'] = array(
+      '#type' => 'submit',
+      '#value' => t('Activate'),
+    );
+  }
+  else {
+    $form['roomify_channel_connector_site_id']['#disabled'] = TRUE;
+    $form['roomify_channel_connector_site_token']['#disabled'] = TRUE;
+    $form['roomify_channel_connector_app_url']['#disabled'] = TRUE;
+
+    $form['submit'] = array(
+      '#type' => 'submit',
+      '#value' => t('Disconnect'),
+    );
+  }
+
+  return $form;
+}
+
+/**
+ * Submit callback for the roomify_channel_connector_configuration_form form.
+ */
+function roomify_channel_connector_configuration_form_submit($form, &$form_state) {
+  if (variable_get('roomify_channel_connector_site_id', '') == '') {
+    $site_id = $form_state['values']['roomify_channel_connector_site_id'];
+    $site_token = $form_state['values']['roomify_channel_connector_site_token'];
+    $app_url = $form_state['values']['roomify_channel_connector_app_url'];
+
+    if (roomify_channel_connector_validate_site_id($site_id, $site_token, $app_url)) {
+      variable_set('roomify_channel_connector_site_id', $site_id);
+      variable_set('roomify_channel_connector_site_token', $site_token);
+      variable_set('roomify_channel_connector_app_url', $app_url);
+
+      drupal_set_message(t('You have successfully connected to the Roomify Channel Manager'));
+    }
+    else {
+      drupal_set_message(t('Connector App URL is not correct or the App is currently not responding. Please try again and if it continues to fail send the URL you are trying to use to support@roomify.us'), 'error');
+    }
+  }
+  else {
+    variable_del('roomify_channel_connector_site_id');
+    variable_del('roomify_channel_connector_site_token');
+    variable_del('roomify_channel_connector_app_url');
+  }
+}
+
+/**
+ * @param $site_id
+ * @param $site_token
+ * @param $app_url
+ *
+ * @return bool
+ */
+function roomify_channel_connector_validate_site_id($site_id, $site_token, $app_url) {
+  return TRUE;
 }
 
 function roomify_channel_connector_services_resources() {
@@ -432,7 +504,6 @@ function roomify_channel_connector_create($reservations) {
       }
 
 
-
       $booking->field_bcom_room_reservation_id[LANGUAGE_NONE][0]['value'] = $room['roomreservation_id'];
 
       //Start Date for the booking
@@ -519,7 +590,6 @@ function roomify_channel_connector_create($reservations) {
  * @return array
  */
 function roomify_channel_connector_availability($property_id, $room_id, $rate_id, $start_date, $end_date) {
-
   $map = roomify_channel_connector_get_map_external($property_id, 'booking_com');
   $roomify_room_id = 0;
   if ($map != FALSE) {
@@ -532,7 +602,8 @@ function roomify_channel_connector_availability($property_id, $room_id, $rate_id
         }
       }
     }
-  } else {
+  }
+  else {
     return '';
   }
 
@@ -777,13 +848,6 @@ function roomify_channel_connector_management_tab($property) {
   }
 
   return $content;
-}
-
-/**
- * Helper function - get roomify site ID.
- */
-function roomify_channel_connector_get_site_id() {
-  return variable_get('roomify_channel_connector_site_id', '');
 }
 
 /**
@@ -1136,7 +1200,7 @@ function roomify_channel_bookingcom_admin_form_validate($form, &$form_state) {
 }
 
 /**
- * Submit handle for bookingcomform
+ * Submit handle for the roomify_channel_bookingcom_admin_form form.
  */
 function roomify_channel_bookingcom_admin_form_submit(&$form, &$form_state) {
   global $user;
@@ -1202,7 +1266,9 @@ function roomify_channel_bookingcom_admin_form_submit(&$form, &$form_state) {
  * Retrieve Room / Rates ID from channel manager
  */
 function roomify_channel_connector_get_bookingcom_ids($hotel_id) {
-  $cm_export_url = CM_URL . 'bc/roomrates/' . $hotel_id;
+  $cm_url = variable_get('roomify_channel_connector_app_url', 'http://cm.roomify.us/');
+
+  $cm_export_url = $cm_url . 'bc/roomrates/' . $hotel_id;
   $request = drupal_http_request($cm_export_url);
   if ($request->data) {
     $reply = json_decode($request->data);
@@ -1245,7 +1311,7 @@ function roomify_channel_connector_entity_update($entity, $type) {
 }
 
 /**
- * Implements hook_entity_insert.
+ * Implements hook_entity_insert().
  *
  * When an event entity is created check if we need to notify a channel about the change.
  * @param $entity
@@ -1273,6 +1339,9 @@ function roomify_channel_connector_entity_insert($entity, $type) {
   }
 }
 
+/**
+ * Implements hook_entity_delete().
+ */
 function roomify_channel_connector_entity_delete($entity, $type) {
   // Adding a new pricing or availability event
   if ($type == 'bat_event' && ($entity->type == 'pricing' || $entity->type == 'availability')) {
@@ -1380,6 +1449,15 @@ function roomify_channel_connector_notify_change($entity, $type, $start_date = N
   }
 }
 
+/**
+ * @param $site_id
+ * @param $h_id
+ * @param $rate_id
+ * @param $room_id
+ * @param $start_date
+ * @param $end_date
+ * @param $type
+ */
 function roomify_channel_connector_send_notification($site_id, $h_id, $rate_id, $room_id, $start_date, $end_date, $type) {
   $message = array(
     'site_id' => $site_id,
@@ -1390,14 +1468,24 @@ function roomify_channel_connector_send_notification($site_id, $h_id, $rate_id, 
     'end_date' => $end_date,
     'type' => $type,
   );
-  $cm_url = CM_URL . 'bc/rate-change-notification?';
+
+  $cm_url = variable_get('roomify_channel_connector_app_url', 'http://cm.roomify.us/');
+  $cm_url .= 'bc/rate-change-notification?';
   foreach ($message as $key => $value) {
     $cm_url .= $key . '=' . $value . '&';
   }
+
   $request = drupal_http_request($cm_url);
   $reply = json_decode($request->data);
 }
 
+/**
+ * @param $arrival
+ * @param $departure
+ * @param $type
+ *
+ * @return
+ */
 function roomify_channel_connector_create_reservation_event($arrival, $departure, $type) {
   $event_type = 'availability';
 
@@ -1406,7 +1494,6 @@ function roomify_channel_connector_create_reservation_event($arrival, $departure
   $end_date->sub(new DateInterval('PT1M'));
 
   $property = roomify_property_load($type->field_st_property_reference[LANGUAGE_NONE][0]['target_id']);
-
 
   $valid_unit_ids = bat_event_get_matching_units($start_date, $end_date, array(AVAILABLE), $type->type_id, 'availability');
 
@@ -1452,6 +1539,13 @@ function roomify_channel_connector_default_cer() {
   return $items;
 }
 
+/**
+ * @param $property_id
+ * @param $room_id
+ * @param $map_type
+ *
+ * @return
+ */
 function roomify_channel_connector_get_type_from_map($property_id, $room_id, $map_type) {
   // Get the channel map
   $map = roomify_channel_connector_get_map_external($property_id, $map_type);
