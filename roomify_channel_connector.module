@@ -1235,6 +1235,7 @@ function roomify_channel_bookingcom_admin_form_validate($form, &$form_state) {
     form_set_error('roomify_channel_bookingcom_hotel_id_' . $form_state['values']['property_id'], t('Please provide us with the Hotel ID on Booking.com.'));
   }
   if ($external_property_id != '') {
+
     $reply = roomify_channel_connector_get_bookingcom_ids($external_property_id);
     if (!$reply) {
       form_set_error('roomify_channel_bookingcom_hotel_id_' . $form_state['values']['property_id'], t('Error connecting to property on Booking.com - please check ID or contact support'));
@@ -1248,6 +1249,13 @@ function roomify_channel_bookingcom_admin_form_validate($form, &$form_state) {
         form_set_error('roomify_channel_bookingcom_hotel_id_' . $form_state['values']['property_id'], t('Another property is already mapped to this Booking.com property. Please contact your site administrator.'));
       }
     }
+
+    // Store this Hotel ID with the channel manager.
+    $reply = roomify_channel_connector_associate_bookingcom_id($external_property_id);
+    if (!$reply) {
+      form_set_error('roomify_channel_bookingcom_hotel_id_' . $form_state['values']['property_id'], t('Error registering this Hotel ID with the Channel Manager - please check ID or contact support'));
+    }
+
   }
 
   // User should not map two rooms to the same option
@@ -1347,6 +1355,28 @@ function roomify_channel_connector_get_bookingcom_ids($hotel_id) {
     }
     else {
       return $reply;
+    }
+  }
+
+  return FALSE;
+}
+
+/**
+ * Associate Hotel ID with Site ID on channel manager.
+ */
+function roomify_channel_connector_associate_bookingcom_id($hotel_id) {
+  $cm_url = variable_get('roomify_channel_connector_app_url', 'http://cm.roomify.us/');
+
+  if ($site_id = variable_get('roomify_channel_connector_site_id')) {
+
+    $cm_export_url = $cm_url . '/bc/register-hotel-id/' . $site_id . '/' . $hotel_id;
+    $request = drupal_http_request($cm_export_url);
+    if ($request->data) {
+      $reply = json_decode($request->data);
+
+      if ($reply[0] == 'Associated Hotel Id' || $reply[0] == 'Hotel Id already associated') {
+        return TRUE;
+      }
     }
   }
 
