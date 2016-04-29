@@ -1158,7 +1158,6 @@ function roomify_channel_bookingcom_admin_form($form, &$form_state, $property) {
           foreach ($reply->roomrates->rooms->$room_id->rates as $rate_id => $rate) {
             $rate_options[$rate_id] = $rate->rate_name;
           }
-
           $form['bookingcom_map']['roomify_channel_bookingcom_' . $bat_type->type_id]['roomify_channel_bookingcom_standardrate_' . $property->property_id . '_' . $bat_type->type_id] = array(
             '#type' => 'select',
             '#options' => $rate_options,
@@ -1306,7 +1305,7 @@ function roomify_channel_bookingcom_admin_form_submit(&$form, &$form_state) {
   }
 
   // Now deal with room mappings - we will cycle through values looking for keys that end in room
-  foreach ($form_state['values'] as $key => $value) {
+  foreach ($form_state['input'] as $key => $value) {
     $k = explode('_', $key);
     if (isset($k[3]) && $k[3]=='roomid') {
       if ($value != 0) {
@@ -1317,11 +1316,12 @@ function roomify_channel_bookingcom_admin_form_submit(&$form, &$form_state) {
   }
 
   // Check to see if there are rates to map
-  foreach ($form_state['values'] as $key => $value) {
+  foreach ($form_state['input'] as $key => $value) {
     $k = explode('_', $key);
     if (isset($k[3]) && $k[3]=='standardrate') {
       if ($value != 0) {
         $map->data[$k[4]][$k[5]]['standardrate'] = $value;
+        entity_save('roomify_channel_map', $map);
         $start_date = new DateTime('now');
         $end_date = clone $start_date;
         $end_date->add(new DateInterval('P1Y'));
@@ -1337,7 +1337,7 @@ function roomify_channel_bookingcom_admin_form_submit(&$form, &$form_state) {
 function roomify_channel_connector_get_bookingcom_ids($hotel_id) {
   $cm_url = variable_get('roomify_channel_connector_app_url', 'http://cm.roomify.us/');
 
-  $cm_export_url = $cm_url . 'bc/roomrates/' . $hotel_id;
+  $cm_export_url = $cm_url . '/bc/roomrates/' . $hotel_id;
   $request = drupal_http_request($cm_export_url);
   if ($request->data) {
     $reply = json_decode($request->data);
@@ -1480,7 +1480,6 @@ function roomify_channel_connector_notify_change($entity, $type, $start_date = N
       break;
   }
 
-
   if ($bat_type != FALSE) {
     // With a bat type in place let us process to load the map
     $map = roomify_channel_connector_get_map_internal($bat_type->field_st_property_reference[LANGUAGE_NONE][0]['target_id'], 'booking_com');
@@ -1499,7 +1498,7 @@ function roomify_channel_connector_notify_change($entity, $type, $start_date = N
         $room_changed,
         isset($start_date) ? $start_date->format('Y-m-d') : $entity->start_date_object->format('Y-m-d'),
         isset($end_date) ? $end_date->format('Y-m-d') : $entity->end_date_object->format('Y-m-d'),
-        ($entity->type == 'default' || $type == 'setup' || $type == 'availability') ? 'availability' : 'rates'
+        ((isset($entity->type) && $entity->type == 'default') || $type == 'setup' || $type == 'availability') ? 'availability' : 'rates'
       );
 
       // If we are in setup we would have sent an availability notification so lets go ahead and send a rates one as well.
