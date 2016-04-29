@@ -151,7 +151,8 @@ function roomify_channel_connector_configuration_form_submit($form, &$form_state
       variable_set('roomify_channel_connector_site_id', $site_id);
       variable_set('roomify_channel_connector_site_token', $site_token);
       variable_set('roomify_channel_connector_app_url', $app_url);
-
+      // Rebuild permissions to take into account the channel connection
+      roomify_rights_rebuild_permissions();
       drupal_set_message(t('You have successfully connected to the Roomify Channel Manager'));
     }
     else {
@@ -162,6 +163,7 @@ function roomify_channel_connector_configuration_form_submit($form, &$form_state
     variable_del('roomify_channel_connector_site_id');
     variable_del('roomify_channel_connector_site_token');
     variable_del('roomify_channel_connector_app_url');
+    roomify_rights_rebuild_permissions();
   }
 }
 
@@ -174,6 +176,61 @@ function roomify_channel_connector_configuration_form_submit($form, &$form_state
  */
 function roomify_channel_connector_validate_site_id($site_id, $site_token, $app_url) {
   return TRUE;
+}
+
+/**
+ * Implements hook_services_api_key_valid_alter
+ * 
+ * This ignores the settings at the service level and instead takes into consideration 
+ * the API key set for the channel manager.
+ *
+ * @param $valid
+ * @param $args
+ */
+function roomify_channel_connector_services_api_key_valid_alter(&$valid, &$args) {
+  // Ensure we are dealing with the CM endpoint
+  if (arg(0) == 'rcc') {
+    $api_key = variable_get('roomify_channel_connector_site_token');
+    // Compare the api token to what is provided via the api call
+    $valid = services_api_key_auth_compare_key($api_key, $args[0]['api_key']);
+
+    // Get list of users with given role.
+    $role = user_role_load_by_name(variable_get('service_api_key_role', 'roomify manager'));
+    $query = 'SELECT DISTINCT(ur.uid) 
+            FROM {users_roles} AS ur 
+            WHERE ur.rid = :rids LIMIT 1';
+    $result = db_query($query, array(':rids' => $role->rid));
+
+    // Set the user to a roomify manager
+    $user = '';
+    while ($uid = $result->fetchColumn()) {
+      $user = user_load($uid);
+    }
+    $args[0]['user'] = $user->name;
+  }
+}
+
+function roomify_channel_connector_roomify_rights(){
+  $rights['roomify_channel_connector'] = array(
+    'roomify manager' => array(
+      'create channel reservations',
+      'retrieve channel availability information',
+      'retrieve rate information',
+    ),
+  );
+
+  if (variable_get('roomify_channel_connector_site_id') != NULL) {
+    $rights['roomify_channel_connector'] = array(
+      'roomify manager' => array(
+        'manage property channels',
+        'create channel reservations',
+        'retrieve channel availability information',
+        'retrieve rate information',
+      ),
+    );
+  }
+  
+  return $rights;
 }
 
 function roomify_channel_connector_services_resources() {
