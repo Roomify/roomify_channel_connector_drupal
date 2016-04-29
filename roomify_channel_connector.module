@@ -192,6 +192,7 @@ function roomify_channel_connector_services_api_key_valid_alter(&$valid, &$args)
   if (arg(0) == 'rcc') {
     $api_key = variable_get('roomify_channel_connector_site_token');
     // Compare the api token to what is provided via the api call
+    $args[0]['api_key'] = (!empty($_SERVER['HTTP_API_KEY'])) ? $_SERVER['HTTP_API_KEY'] : '';
     $valid = services_api_key_auth_compare_key($api_key, $args[0]['api_key']);
 
     // Get list of users with given role.
