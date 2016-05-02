@@ -246,7 +246,7 @@ function roomify_channel_connector_roomify_rights(){
       ),
     );
   }
-  
+
   return $rights;
 }
 
@@ -255,7 +255,7 @@ function roomify_channel_connector_services_resources() {
 
   $resources['channel-reservation'] = array(
     'operations' => array(
-      'create' => array( 
+      'create' => array(
         'callback' => 'roomify_channel_connector_create',
         'help' => t('Creates a new reservation through the channel manager'),
         'access arguments' => array('create channel reservations'),
@@ -366,7 +366,7 @@ function roomify_channel_connector_services_resources() {
       'index' => array(
         'callback' => 'roomify_channel_connector_rates',
         'help' => t('Returns rate information in Json.'),
-        'access arguments' => array('retrieve bcom rate information'),
+        'access arguments' => array('retrieve rate information'),
         'args'     => array(
           array(
             'name'         => 'property_id',
@@ -848,7 +848,6 @@ function roomify_channel_connector_rates($property_id, $room_id, $rate_id, $star
           $type = bat_type_load($roomify_room_id);
           // GO get the correct rate using this type
           $roomify_rate_id = roomify_channel_connector_get_standard_rate_for_type($roomify_room_id);
-          
         }
       }
     }
