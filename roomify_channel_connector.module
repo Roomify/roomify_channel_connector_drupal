@@ -1574,6 +1574,8 @@ function roomify_channel_connector_send_notification($site_id, $h_id, $rate_id, 
   }
 
   $request = drupal_http_request($cm_url);
+  watchdog('roomify_channel_connector', 'Sent rate change notification request to ' . $cm_url);
+  watchdog('roomify_channel_connector', 'Request object: ' . print_r($request, 1));
   $reply = json_decode($request->data);
 }
 
