@@ -156,7 +156,7 @@ function roomify_channel_connector_configuration_form_submit($form, &$form_state
       drupal_set_message(t('You have successfully connected to the Roomify Channel Manager'));
     }
     else {
-      drupal_set_message(t('Connector App URL is not correct or the App is currently not responding. Please try again and if it continues to fail send the URL you are trying to use to support@roomify.us'), 'error');
+      drupal_set_message(t('The Connector App URL, Roomify Site ID, or Roomify Site Token is not correct or the App is currently not responding. Please try again and if it continues to fail send the URL you are trying to use to support@roomify.us'), 'error');
     }
   }
   else {
