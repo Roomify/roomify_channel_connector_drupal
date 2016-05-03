@@ -565,7 +565,7 @@ function roomify_channel_connector_create($reservations) {
 
 
         $created_time = $reservation['date'] . ' ' . $reservation['time'];
-        
+
         $booking = bat_booking_create(array(
           'type' => 'booking_com',
           'uid' => $event->uid,
@@ -580,11 +580,11 @@ function roomify_channel_connector_create($reservations) {
 
       $booking->field_bcom_room_reservation_id[LANGUAGE_NONE][0]['value'] = $room['roomreservation_id'];
 
-      //Start Date for the booking
+      // Start Date for the booking.
       $booking->field_bcom_arrival_date[LANGUAGE_NONE][0]['value'] = $room['arrival_date'];
       $booking->booking_start_date[LANGUAGE_NONE][0]['value'] = $room['arrival_date'];
 
-      //End Date for the booking
+      // End Date for the booking.
       $booking->field_bcom_departure_date[LANGUAGE_NONE][0]['value'] = $room['departure_date'];
       $booking->booking_end_date[LANGUAGE_NONE][0]['value'] = $room['departure_date'];
 
@@ -612,8 +612,8 @@ function roomify_channel_connector_create($reservations) {
       // Add the generic reservation data
       $booking->field_bcom_reservation_id[LANGUAGE_NONE][0]['value'] = $reservation['id'];
       $booking->field_bcom_status[LANGUAGE_NONE][0]['value'] = $reservation['status'];
-      $booking->field_bcom_reservation_time[LANGUAGE_NONE][0]['value'] = $reservation['date'] . ' - ' . $reservation['time'];
       $reservation_time = $reservation['date'] . ' ' . $reservation['time'];
+      $booking->field_bcom_reservation_time[LANGUAGE_NONE][0]['value'] = $reservation_time;
       $booking->changed = strtotime($reservation_time);
 
       $booking->field_bcom_commission_amount[LANGUAGE_NONE][0]['value'] = $reservation['commissionamount'];
