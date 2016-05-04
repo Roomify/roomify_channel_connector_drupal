@@ -531,7 +531,7 @@ function roomify_channel_connector_create($reservations) {
 
         if ($type == FALSE) {
           watchdog('Channel Manager', 'Booking.com reservation ' . $room['roomreservation_id'] . ' cannot be saved as no matching room type exists.', array(), WATCHDOG_INFO);
-          $reply[] = 'Booking.com reservation ' . $room['roomreservation_id'] . ' was not saved';
+          $reply[] = 'Booking.com reservation ' . $room['roomreservation_id'] . ' cannot be saved as no matching room type exists.';
           return drupal_json_encode($reply);
         }
 
@@ -549,7 +549,7 @@ function roomify_channel_connector_create($reservations) {
 
         if ($type == FALSE) {
           watchdog('Channel Manager', 'Booking.com reservation ' . $room['roomreservation_id'] . ' cannot be saved as no matching room type exists.', array(), WATCHDOG_INFO);
-          $reply[] = 'Booking.com reservation ' . $room['roomreservation_id'] . ' was not saved';
+          $reply[] = 'Booking.com reservation ' . $room['roomreservation_id'] . ' cannot be saved as no matching room type exists for ' . $room['id'];
           return drupal_json_encode($reply);
         }
 
@@ -558,8 +558,8 @@ function roomify_channel_connector_create($reservations) {
 
         // If no valid units ids were found stop here.
         if ($event == FALSE) {
-          watchdog('Channel Manager', 'Booking.com reservation ' . $room['roomreservation_id'] . ' cannot be saved as available units found.', array(), WATCHDOG_INFO);
-          $reply[] = 'Booking.com reservation ' . $room['roomreservation_id'] . ' was not saved';
+          watchdog('Channel Manager', 'Booking.com reservation ' . $room['roomreservation_id'] . ' cannot be saved as no available units found.', array(), WATCHDOG_INFO);
+          $reply[] = 'Booking.com reservation ' . $room['roomreservation_id'] . ' cannot be saved as no available units found.';
           return drupal_json_encode($reply);
         }
 
