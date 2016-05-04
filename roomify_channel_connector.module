@@ -133,6 +133,10 @@ function roomify_channel_connector_configuration_form($form, &$form_state) {
       '#type' => 'submit',
       '#value' => t('Disconnect'),
     );
+
+    if (variable_get('roomify_accommodation_booking_future_limit', 31104000) < 31104000) {
+      drupal_set_message(t('Your current limit for bookings in the future is less than a year. It is recommended you set it to at least one year as most OTAs require that. Bookings in the future that are over the limit will not be created otherwise. We suggest to set it at least one year. You can change it <a href="@link">here</a>.', array('@link' => url('admin/bat/config/booking/settings'))), 'warning');
+    }
   }
 
   return $form;
