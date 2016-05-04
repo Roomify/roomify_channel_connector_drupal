@@ -1499,6 +1499,22 @@ function roomify_channel_connector_entity_delete($entity, $type) {
       roomify_channel_connector_disassociate_bookingcom_id($entity->external_property_id);
     }
   }
+
+  // Delete channel map when a property is deleted.
+  if ($type == 'roomify_property') {
+    // Check if there are any channel maps for this property.
+    $efq = new EntityFieldQuery();
+    $efq->entityCondition('entity_type', 'roomify_channel_map')
+        ->propertyCondition('internal_property_id', $entity->property_id, '=');
+    $result = $efq->execute();
+
+    // Delete any channel maps found.
+    if (count($result)) {
+      foreach ($result['roomify_channel_map'] as $record) {
+        entity_delete('roomify_channel_map', $record->channel_map_id);
+      }
+    }
+  }
 }
 
 /**
