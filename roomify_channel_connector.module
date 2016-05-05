@@ -63,6 +63,10 @@ function roomify_channel_connector_permission() {
       'title' => t('Retrieve channel availability info'),
       'description' => t('Retrieve channel availability info'),
     ),
+    'retrieve type availability information' => array(
+      'title' => t('Retrieve type availability info'),
+      'description' => t('Retrieve type availability info'),
+    ),
     'retrieve rate information' => array(
       'title' => t('Retrieve channel rate info'),
       'description' => t('Retrieve channel rate info'),
@@ -232,19 +236,13 @@ function roomify_channel_connector_services_api_key_valid_alter(&$valid, &$args)
  * @return mixed
  */
 function roomify_channel_connector_roomify_rights(){
-  $rights['roomify_channel_connector'] = array(
-    'roomify manager' => array(
-      'create channel reservations',
-      'retrieve channel availability information',
-      'retrieve rate information',
-    ),
-  );
 
   if (variable_get('roomify_channel_connector_site_id') != NULL) {
     $rights['roomify_channel_connector'] = array(
       'roomify manager' => array(
         'manage property channels',
         'create channel reservations',
+        'retrieve type availability information',
         'retrieve channel availability information',
         'retrieve rate information',
       ),
