@@ -570,7 +570,7 @@ function roomify_channel_connector_create($reservations) {
 
         $booking = bat_booking_create(array(
           'type' => 'booking_com',
-          'uid' => $event->uid,
+          'uid' => $event->uid, // Owner of the booking will be the same as the owner of the type
           'created' => strtotime($created_time),
         ));
         $booking->booking_event_reference[LANGUAGE_NONE][0]['target_id'] = $event->event_id;
