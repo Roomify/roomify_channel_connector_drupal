@@ -237,6 +237,8 @@ function roomify_channel_connector_services_api_key_valid_alter(&$valid, &$args)
  */
 function roomify_channel_connector_roomify_rights(){
 
+  $rights['roomify_channel_connector'] = array();
+
   if (variable_get('roomify_channel_connector_site_id') != NULL) {
     $rights['roomify_channel_connector'] = array(
       'roomify manager' => array(
