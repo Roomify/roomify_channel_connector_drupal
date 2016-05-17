@@ -190,11 +190,11 @@ function roomify_channel_connector_configuration_form_submit($form, &$form_state
 function roomify_channel_connector_validate_site_id($site_id, $site_token, $app_url) {
   $request = drupal_http_request($app_url . 'admin/authcheck/' . $site_id . '/' . $site_token);
 
-  if ($request->status_message == "OK") {
+  if (isset($request->status_message) && $request->status_message == 'OK') {
     return TRUE;
   }
 
-  RETURN FALSE;
+  return FALSE;
 }
 
 /**
