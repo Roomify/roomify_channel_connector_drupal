@@ -23,6 +23,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'settings' => array(
       'cache_count' => 4,
       'cache_enabled' => 0,
+      'entity_translation_sync' => FALSE,
       'granularity' => array(
         'day' => 'day',
         'hour' => 'hour',
@@ -55,6 +56,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 1,
     'module' => 'entityreference',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'handler' => 'base',
       'handler_settings' => array(),
       'target_type' => 'bat_event',
@@ -76,6 +78,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'settings' => array(
       'cache_count' => 4,
       'cache_enabled' => 0,
+      'entity_translation_sync' => FALSE,
       'granularity' => array(
         'day' => 'day',
         'hour' => 'hour',
@@ -108,6 +111,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'profile2_private' => FALSE,
     ),
     'translatable' => 0,
@@ -127,6 +131,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'settings' => array(
       'cache_count' => 4,
       'cache_enabled' => 0,
+      'entity_translation_sync' => FALSE,
       'granularity' => array(
         'day' => 'day',
         'hour' => 0,
@@ -159,6 +164,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'max_length' => 255,
       'profile2_private' => FALSE,
     ),
@@ -181,6 +187,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'max_length' => 255,
       'profile2_private' => FALSE,
     ),
@@ -203,6 +210,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'max_length' => 255,
       'profile2_private' => FALSE,
     ),
@@ -225,6 +233,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'max_length' => 255,
       'profile2_private' => FALSE,
     ),
@@ -247,6 +256,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'max_length' => 255,
       'profile2_private' => FALSE,
     ),
@@ -269,6 +279,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'max_length' => 255,
       'profile2_private' => FALSE,
     ),
@@ -291,6 +302,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'max_length' => 255,
       'profile2_private' => FALSE,
     ),
@@ -313,6 +325,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'max_length' => 255,
       'profile2_private' => FALSE,
     ),
@@ -335,6 +348,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'max_length' => 255,
       'profile2_private' => FALSE,
     ),
@@ -357,6 +371,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'max_length' => 255,
       'profile2_private' => FALSE,
     ),
@@ -379,6 +394,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'max_length' => 255,
       'profile2_private' => FALSE,
     ),
@@ -401,6 +417,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'max_length' => 255,
       'profile2_private' => FALSE,
     ),
@@ -423,6 +440,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'max_length' => 255,
       'profile2_private' => FALSE,
     ),
@@ -443,6 +461,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'settings' => array(
       'cache_count' => 4,
       'cache_enabled' => 0,
+      'entity_translation_sync' => FALSE,
       'granularity' => array(
         'day' => 'day',
         'hour' => 0,
@@ -475,6 +494,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'max_length' => 255,
       'profile2_private' => FALSE,
     ),
@@ -497,6 +517,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'profile2_private' => FALSE,
     ),
     'translatable' => 0,
@@ -518,6 +539,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'profile2_private' => FALSE,
     ),
     'translatable' => 0,
@@ -539,6 +561,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'max_length' => 255,
       'profile2_private' => FALSE,
     ),
@@ -561,6 +584,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'max_length' => 255,
       'profile2_private' => FALSE,
     ),
@@ -583,6 +607,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'max_length' => 255,
       'profile2_private' => FALSE,
     ),
@@ -605,6 +630,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'max_length' => 255,
       'profile2_private' => FALSE,
     ),
@@ -627,6 +653,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'max_length' => 255,
       'profile2_private' => FALSE,
     ),
@@ -649,6 +676,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'max_length' => 255,
       'profile2_private' => FALSE,
     ),
@@ -671,6 +699,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'profile2_private' => FALSE,
     ),
     'translatable' => 0,
@@ -692,6 +721,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'max_length' => 255,
       'profile2_private' => FALSE,
     ),
@@ -714,6 +744,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'profile2_private' => FALSE,
     ),
     'translatable' => 0,
@@ -735,6 +766,29 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
+      'profile2_private' => FALSE,
+    ),
+    'translatable' => 0,
+    'type' => 'text_long',
+  );
+
+  // Exported field_base: 'field_bcom_reserv_extra_info'.
+  $field_bases['field_bcom_reserv_extra_info'] = array(
+    'active' => 1,
+    'cardinality' => -1,
+    'deleted' => 0,
+    'entity_types' => array(),
+    'field_name' => 'field_bcom_reserv_extra_info',
+    'indexes' => array(
+      'format' => array(
+        0 => 'format',
+      ),
+    ),
+    'locked' => 0,
+    'module' => 'text',
+    'settings' => array(
+      'entity_translation_sync' => FALSE,
       'profile2_private' => FALSE,
     ),
     'translatable' => 0,
@@ -754,6 +808,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'settings' => array(
       'cache_count' => 4,
       'cache_enabled' => 0,
+      'entity_translation_sync' => FALSE,
       'granularity' => array(
         'day' => 'day',
         'hour' => 0,
@@ -786,6 +841,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'max_length' => 255,
       'profile2_private' => FALSE,
     ),
@@ -806,6 +862,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'settings' => array(
       'cache_count' => 4,
       'cache_enabled' => 0,
+      'entity_translation_sync' => FALSE,
       'granularity' => array(
         'day' => 'day',
         'hour' => 'hour',
@@ -838,6 +895,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'max_length' => 255,
       'profile2_private' => FALSE,
     ),
@@ -860,6 +918,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'max_length' => 255,
       'profile2_private' => FALSE,
     ),
@@ -882,6 +941,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'max_length' => 255,
       'profile2_private' => FALSE,
     ),
@@ -904,6 +964,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'profile2_private' => FALSE,
     ),
     'translatable' => 0,
@@ -925,6 +986,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'max_length' => 255,
       'profile2_private' => FALSE,
     ),
@@ -947,6 +1009,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'max_length' => 255,
       'profile2_private' => FALSE,
     ),
@@ -969,6 +1032,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'max_length' => 255,
       'profile2_private' => FALSE,
     ),
@@ -991,6 +1055,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'max_length' => 255,
       'profile2_private' => FALSE,
     ),
@@ -1013,6 +1078,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'max_length' => 255,
       'profile2_private' => FALSE,
     ),
@@ -1035,6 +1101,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'max_length' => 255,
       'profile2_private' => FALSE,
     ),
@@ -1057,6 +1124,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'max_length' => 255,
       'profile2_private' => FALSE,
     ),
@@ -1079,6 +1147,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'max_length' => 255,
       'profile2_private' => FALSE,
     ),
@@ -1101,6 +1170,7 @@ function roomify_channel_connector_field_default_field_bases() {
     'locked' => 0,
     'module' => 'text',
     'settings' => array(
+      'entity_translation_sync' => FALSE,
       'max_length' => 255,
       'profile2_private' => FALSE,
     ),

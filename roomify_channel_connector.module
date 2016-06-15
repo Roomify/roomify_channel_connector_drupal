@@ -647,6 +647,12 @@ function roomify_channel_connector_create($reservations) {
       $booking->field_bcom_dc_start_date[LANGUAGE_NONE][0]['value'] = $reservation['customer']['dc_start_date'];
       $booking->field_bcom_remarks[LANGUAGE_NONE][0]['value'] = $reservation['customer']['remarks'];
 
+      // Add reservation extra info data
+      $booking->field_bcom_reserv_extra_info[LANGUAGE_NONE] = array();
+      foreach ($reservation['reservation_extra_info'] as $name => $value) {
+        $booking->field_bcom_reserv_extra_info[LANGUAGE_NONE][]['value'] = drupal_json_encode(array($name => $value));
+      }
+
       $booking->save();
 
       watchdog('Channel Manager', 'Booking.com reservation ' . $room['roomreservation_id'] . ' saved', array(), WATCHDOG_INFO);
