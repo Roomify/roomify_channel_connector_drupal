@@ -40,7 +40,7 @@ function roomify_channel_connector_field_default_field_instances() {
     ),
     'entity_type' => 'bat_booking',
     'field_name' => 'booking_end_date',
-    'label' => 'End Date',
+    'label' => 'Departure Date',
     'required' => FALSE,
     'settings' => array(
       'default_value' => 'now',
@@ -139,7 +139,7 @@ function roomify_channel_connector_field_default_field_instances() {
     ),
     'entity_type' => 'bat_booking',
     'field_name' => 'booking_start_date',
-    'label' => 'Start Date',
+    'label' => 'Arrival Date',
     'required' => FALSE,
     'settings' => array(
       'default_value' => 'now',
@@ -3663,7 +3663,7 @@ function roomify_channel_connector_field_default_field_instances() {
   t('DC_START_DATE');
   t('Departure Date');
   t('Email');
-  t('End Date');
+  t('Departure Date');
   t('Event');
   t('Extra Info');
   t('Facilities');
@@ -3688,7 +3688,7 @@ function roomify_channel_connector_field_default_field_instances() {
   t('Room Total Price');
   t('Room Type Name');
   t('Smoking');
-  t('Start Date');
+  t('Arrival Date');
   t('Telephone');
   t('Total Cancellation Fee');
   t('Total Price');
