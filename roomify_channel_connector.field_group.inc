@@ -13,15 +13,45 @@ function roomify_channel_connector_field_group_info() {
   $field_group = new stdClass();
   $field_group->disabled = FALSE; /* Edit this to true to make a default field_group disabled initially */
   $field_group->api_version = 1;
-  $field_group->identifier = 'group_customer_info|bat_booking|booking_com|form';
-  $field_group->group_name = 'group_customer_info';
+  $field_group->identifier = 'group_bcom_info|bat_booking|booking_com|form';
+  $field_group->group_name = 'group_bcom_info';
   $field_group->entity_type = 'bat_booking';
   $field_group->bundle = 'booking_com';
   $field_group->mode = 'form';
   $field_group->parent_name = '';
   $field_group->data = array(
+    'label' => 'Booking.com info',
+    'weight' => '3',
+    'children' => array(
+      0 => 'group_reservation_extra_info',
+      1 => 'group_customer_info',
+      2 => 'group_reservation_info',
+      3 => 'group_room_info',
+    ),
+    'format_type' => 'tab',
+    'format_settings' => array(
+      'formatter' => 'closed',
+      'instance_settings' => array(
+        'description' => '',
+        'classes' => 'group-bcom-info field-group-tab',
+        'required_fields' => 1,
+      ),
+    ),
+  );
+  $field_groups['group_bcom_info|bat_booking|booking_com|form'] = $field_group;
+
+  $field_group = new stdClass();
+  $field_group->disabled = FALSE; /* Edit this to true to make a default field_group disabled initially */
+  $field_group->api_version = 1;
+  $field_group->identifier = 'group_customer_info|bat_booking|booking_com|form';
+  $field_group->group_name = 'group_customer_info';
+  $field_group->entity_type = 'bat_booking';
+  $field_group->bundle = 'booking_com';
+  $field_group->mode = 'form';
+  $field_group->parent_name = 'group_bcom_info';
+  $field_group->data = array(
     'label' => 'Customer Info',
-    'weight' => '19',
+    'weight' => '5',
     'children' => array(
       0 => 'field_bcom_address',
       1 => 'field_bcom_cc_cvc',
@@ -62,10 +92,10 @@ function roomify_channel_connector_field_group_info() {
   $field_group->entity_type = 'bat_booking';
   $field_group->bundle = 'booking_com';
   $field_group->mode = 'form';
-  $field_group->parent_name = '';
+  $field_group->parent_name = 'group_bcom_info';
   $field_group->data = array(
     'label' => 'Reservation Extra Info',
-    'weight' => '82',
+    'weight' => '7',
     'children' => array(
       0 => 'field_bcom_reserv_extra_info',
     ),
@@ -90,10 +120,10 @@ function roomify_channel_connector_field_group_info() {
   $field_group->entity_type = 'bat_booking';
   $field_group->bundle = 'booking_com';
   $field_group->mode = 'form';
-  $field_group->parent_name = '';
+  $field_group->parent_name = 'group_bcom_info';
   $field_group->data = array(
     'label' => 'Reservation Info',
-    'weight' => '5',
+    'weight' => '4',
     'children' => array(
       0 => 'field_bcom_commission_amount',
       1 => 'field_bcom_currency_code',
@@ -127,10 +157,10 @@ function roomify_channel_connector_field_group_info() {
   $field_group->entity_type = 'bat_booking';
   $field_group->bundle = 'booking_com';
   $field_group->mode = 'form';
-  $field_group->parent_name = '';
+  $field_group->parent_name = 'group_bcom_info';
   $field_group->data = array(
     'label' => 'Room Info',
-    'weight' => '48',
+    'weight' => '6',
     'children' => array(
       0 => 'field_bcom_price_data_per_date',
       1 => 'field_bcom_arrival_date',
@@ -166,6 +196,7 @@ function roomify_channel_connector_field_group_info() {
 
   // Translatables
   // Included for use with string extractors like potx.
+  t('Booking.com info');
   t('Customer Info');
   t('Reservation Extra Info');
   t('Reservation Info');

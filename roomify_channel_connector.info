@@ -68,6 +68,7 @@ features[field_base][] = field_bcom_status
 features[field_base][] = field_bcom_telephone
 features[field_base][] = field_bcom_total_price
 features[field_base][] = field_bcom_zip
+features[field_group][] = group_bcom_info|bat_booking|booking_com|form
 features[field_group][] = group_customer_info|bat_booking|booking_com|form
 features[field_group][] = group_reservation_extra_info|bat_booking|booking_com|form
 features[field_group][] = group_reservation_info|bat_booking|booking_com|form
