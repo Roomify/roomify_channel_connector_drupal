@@ -57,6 +57,13 @@ function roomify_channel_connector_default_services_endpoint() {
         ),
       ),
     ),
+    'channel-restrictions' => array(
+      'operations' => array(
+        'index' => array(
+          'enabled' => '1',
+        ),
+      ),
+    ),
     'channel-reservation' => array(
       'operations' => array(
         'create' => array(

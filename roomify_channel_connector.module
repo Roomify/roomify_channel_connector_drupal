@@ -413,6 +413,54 @@ function roomify_channel_connector_services_resources() {
     ),
   );
 
+  $resources['channel-restrictions'] = array(
+    'operations' => array(
+      'index' => array(
+        'callback' => 'roomify_channel_connector_restrictions',
+        'help' => t('Returns restriction information in Json.'),
+        'access arguments' => array('retrieve restriction information'),
+        'args'     => array(
+          array(
+            'name'         => 'property_id',
+            'type'         => 'string',
+            'description'  => t('The property id for which to retrieve info - should be mapped correctly'),
+            'source'       => array('path' => 0),
+            'optional'     => TRUE,
+          ),
+          array(
+            'name'         => 'room_id',
+            'type'         => 'string',
+            'description'  => t('The room_id for which to retrieve availability info'),
+            'source'       => array('path' => 1),
+            'optional'     => TRUE,
+          ),
+          array(
+            'name'         => 'rate_id',
+            'type'         => 'string',
+            'description'  => t('The rate_id for which to retrieve availability info'),
+            'source'       => array('path' => 2),
+            'optional'     => TRUE,
+          ),
+          array(
+            'name'         => 'start_date',
+            'type'         => 'string',
+            'description'  => t('The start date for which to retrieve availability info - e.g. 2016-03-01'),
+            'source'       => array('path' => 3),
+            'optional'     => TRUE,
+          ),
+          array(
+            'name'         => 'end_date',
+            'type'         => 'string',
+            'description'  => t('The end date for which to retrieve availability info - e.g. 2016-03-01'),
+            'source'       => array('path' => 4),
+            'optional'     => TRUE,
+          ),
+
+        ),
+      ),
+    ),
+  );
+
   return $resources;
 }
 
@@ -450,11 +498,13 @@ function roomify_channel_connector_create($reservations) {
           $event->save();
           $cm_room->save();
           watchdog('Channel Manager', 'Booking.com reservation ' . $reservation['id'] . ' cancelled', array(), WATCHDOG_INFO);
-          $reply[] = 'Booking.com reservation ' . $reservation['id'] . ' cancelled';
+
+          $reply['message'] = 'Booking.com reservation ' . $reservation['id'] . ' cancelled';
+          $reply['status'] = 'cancelled';
         }
       }
 
-      return json_encode($reply);
+      return drupal_json_encode($reply);
     }
 
     // With modified reservations two things can happen. 1. A room is completely cancelled or room data has been altered or changed.
@@ -494,8 +544,9 @@ function roomify_channel_connector_create($reservations) {
             $event->save();
             $cm_room->save();
             watchdog('Channel Manager', 'Booking.com room reservation ' . $cm_room->field_bcom_room_reservation_id[LANGUAGE_NONE][0]['value'] . ' cancelled', array(), WATCHDOG_INFO);
-            $reply[] = 'Booking.com room reservation ' . $cm_room->field_bcom_room_reservation_id[LANGUAGE_NONE][0]['value'] . ' cancelled';
 
+            $reply['message'] = 'Booking.com room reservation ' . $cm_room->field_bcom_room_reservation_id[LANGUAGE_NONE][0]['value'] . ' cancelled';
+            $reply['status'] = 'cancelled';
           }
         }
 
@@ -534,15 +585,20 @@ function roomify_channel_connector_create($reservations) {
         $type = roomify_channel_connector_get_type_from_map($reservation['hotel_id'], $booking->field_bcom_room_id[LANGUAGE_NONE][0]['value'], 'booking_com');
 
         if ($type == FALSE) {
-          watchdog('Channel Manager', 'Booking.com reservation ' . $room['roomreservation_id'] . ' cannot be saved as no matching room type exists.', array(), WATCHDOG_INFO);
-          $reply[] = 'Booking.com reservation ' . $room['roomreservation_id'] . ' cannot be saved as no matching room type exists.';
+          watchdog('Channel Manager', 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') cannot be saved as no matching room type exists.', array(), WATCHDOG_INFO);
+
+          $reply['message'] = 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') cannot be saved as no matching room type exists.';
+          $reply['status'] = 'no_matching_room_type';
+
           return drupal_json_encode($reply);
         }
 
         $new_event = roomify_channel_connector_create_reservation_event($room['arrival_date'], $room['departure_date'], $type);
         $booking->booking_event_reference[LANGUAGE_NONE][0]['target_id'] = $new_event->event_id;
-        watchdog('Channel Manager', 'Booking.com reservation ' . $room['roomreservation_id'] . ' updated', array(), WATCHDOG_INFO);
-        $reply[] = 'Booking.com reservation ' . $room['roomreservation_id'] . ' updated';
+        watchdog('Channel Manager', 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') updated', array(), WATCHDOG_INFO);
+
+        $reply['message'] = 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') updated';
+        $reply['status'] = 'updated';
       }
       else {
         // Need to gear up to create a new booking.
@@ -552,8 +608,11 @@ function roomify_channel_connector_create($reservations) {
         $type = roomify_channel_connector_get_type_from_map($reservation['hotel_id'], $room['id'], 'booking_com');
 
         if ($type == FALSE) {
-          watchdog('Channel Manager', 'Booking.com reservation ' . $room['roomreservation_id'] . ' cannot be saved as no matching room type exists.', array(), WATCHDOG_INFO);
-          $reply[] = 'Booking.com reservation ' . $room['roomreservation_id'] . ' cannot be saved as no matching room type exists for ' . $room['id'];
+          watchdog('Channel Manager', 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') cannot be saved as no matching room type exists.', array(), WATCHDOG_INFO);
+
+          $reply['message'] = 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') cannot be saved as no matching room type exists for ' . $room['id'];
+          $reply['status'] = 'no_matching_room_type';
+
           return drupal_json_encode($reply);
         }
 
@@ -562,8 +621,11 @@ function roomify_channel_connector_create($reservations) {
 
         // If no valid units ids were found stop here.
         if ($event == FALSE) {
-          watchdog('Channel Manager', 'Booking.com reservation ' . $room['roomreservation_id'] . ' cannot be saved as no available units found.', array(), WATCHDOG_INFO);
-          $reply[] = 'Booking.com reservation ' . $room['roomreservation_id'] . ' cannot be saved as no available units found.';
+          watchdog('Channel Manager', 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') cannot be saved as no available units found.', array(), WATCHDOG_INFO);
+
+          $reply['message'] = 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') cannot be saved as no available units found.';
+          $reply['status'] = 'no_available_units';
+
           return drupal_json_encode($reply);
         }
 
@@ -576,9 +638,10 @@ function roomify_channel_connector_create($reservations) {
           'created' => strtotime($created_time),
         ));
         $booking->booking_event_reference[LANGUAGE_NONE][0]['target_id'] = $event->event_id;
-        watchdog('Channel Manager', 'Booking.com reservation ' . $room['roomreservation_id'] . ' created', array(), WATCHDOG_INFO);
-        $reply[] = 'Booking.com reservation ' . $room['roomreservation_id'] . ' created';
+        watchdog('Channel Manager', 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') created', array(), WATCHDOG_INFO);
 
+        $reply['message'] = 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') created';
+        $reply['status'] = 'created';
       }
 
 
@@ -655,8 +718,10 @@ function roomify_channel_connector_create($reservations) {
 
       $booking->save();
 
-      watchdog('Channel Manager', 'Booking.com reservation ' . $room['roomreservation_id'] . ' saved', array(), WATCHDOG_INFO);
-      $reply[] = 'Booking.com reservation ' . $room['roomreservation_id'] . ' saved';
+      watchdog('Channel Manager', 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') saved', array(), WATCHDOG_INFO);
+
+      $reply['message'] = 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') saved';
+      $reply['status'] = 'saved';
     }
   }
 
@@ -1436,6 +1501,7 @@ function roomify_channel_connector_entity_update($entity, $type) {
       roomify_channel_connector_notify_change($entity, $entity->type);
     }
   }
+
   if ($type == 'roomify_rate' && $entity->name == 'Standard') {
     // Check if we have a site id (which implies we are connected)
     if (variable_get('roomify_channel_connector_site_id') != '') {
@@ -1444,6 +1510,13 @@ function roomify_channel_connector_entity_update($entity, $type) {
       $end_date->add(new DateInterval('P1Y'));
 
       roomify_channel_connector_notify_change($entity, $type, $start_date, $end_date);
+    }
+  }
+
+  if ($type == 'bat_type') {
+    $constraints = roomify_channel_connector_get_type_constraints($entity);
+    if (count($constraints)) {
+      roomify_channel_connector_notify_change($entity, 'rate_restriction');
     }
   }
 }
@@ -1473,6 +1546,13 @@ function roomify_channel_connector_entity_insert($entity, $type) {
       $end_date = clone $start_date;
       $end_date->add(new DateInterval('P1Y'));
       roomify_channel_connector_notify_change($entity, 'new_unit', $start_date, $end_date);
+    }
+  }
+
+  if ($type == 'bat_type') {
+    $constraints = roomify_channel_connector_get_type_constraints($entity);
+    if (count($constraints)) {
+      roomify_channel_connector_notify_change($entity, 'rate_restriction');
     }
   }
 }
@@ -1570,6 +1650,8 @@ function roomify_channel_connector_notify_change($entity, $type, $start_date = N
     case 'roomify_rate':
       $bat_type = bat_type_load($entity->rate_bat_type_reference[LANGUAGE_NONE][0]['target_id']);
       break;
+    case 'rate_restriction':
+      $bat_type = $entity;
   }
 
   if ($bat_type != FALSE) {
@@ -1580,18 +1662,33 @@ function roomify_channel_connector_notify_change($entity, $type, $start_date = N
       $map = roomify_channel_map_load($map->channel_map_id);
       $internal_id = $map->internal_property_id;
       $external_id = $map->external_property_id;
+
       // Get rate changes
       $room_changed = $map->data[$internal_id][$bat_type->type_id]['roomid'];
       $rate_changed = $map->data[$internal_id][$bat_type->type_id]['standardrate'];
-      roomify_channel_connector_send_notification(
-        variable_get('roomify_channel_connector_site_id'),
-        $external_id,
-        $rate_changed,
-        $room_changed,
-        isset($start_date) ? $start_date->format('Y-m-d') : $entity->start_date_object->format('Y-m-d'),
-        isset($end_date) ? $end_date->format('Y-m-d') : $entity->end_date_object->format('Y-m-d'),
-        ((isset($entity->type) && $entity->type == 'default') || $type == 'setup' || $type == 'availability') ? 'availability' : 'rates'
-      );
+
+      if ($type == 'rate_restriction') {
+        roomify_channel_connector_send_notification(
+          variable_get('roomify_channel_connector_site_id'),
+          $external_id,
+          $rate_changed,
+          $room_changed,
+          NULL,
+          NULL,
+          'rate_restriction'
+        );
+      }
+      else {
+        roomify_channel_connector_send_notification(
+          variable_get('roomify_channel_connector_site_id'),
+          $external_id,
+          $rate_changed,
+          $room_changed,
+          isset($start_date) ? $start_date->format('Y-m-d') : $entity->start_date_object->format('Y-m-d'),
+          isset($end_date) ? $end_date->format('Y-m-d') : $entity->end_date_object->format('Y-m-d'),
+          ((isset($entity->type) && $entity->type == 'default') || $type == 'setup' || $type == 'availability') ? 'availability' : 'rates'
+        );
+      }
 
       // If we are in setup we would have sent an availability notification so lets go ahead and send a rates one as well.
       if ($type == 'setup') {
@@ -1727,4 +1824,102 @@ function roomify_channel_connector_get_type_from_map($property_id, $room_id, $ma
   }
 
   return FALSE;
+}
+
+/**
+ * Get all MIN/MAX constraints for a given bat type
+ *
+ * @param $type
+ *
+ * @return array
+ */
+function roomify_channel_connector_get_type_constraints($type) {
+  $field_constraints = field_get_items('bat_type', $type, 'bat_constraints_range');
+
+  $constraints = array();
+
+  if (!empty($field_constraints)) {
+    $drupal_units = bat_unit_load_multiple(FALSE, array('type_id' => $type->type_id));
+    $bat_units = array();
+    foreach ($drupal_units as $unit_id => $unit) {
+      $bat_units[] = new Unit($unit_id, 0);
+    }
+
+    foreach ($field_constraints as $field_constraint) {
+      if ($field_constraint['constraint_type'] != BAT_EVENT_STATE_CONSTRAINTS_MUST_START) {
+        $start_date = new DateTime($field_constraint['start_date']);
+        $end_date = new DateTime($field_constraint['end_date']);
+        $end_date->add(new DateInterval('P1D'));
+
+        if ($start_date->format('Y-m-d') == '1970-01-01') {
+          $start_date = new DateTime();
+        }
+        if ($end_date->format('Y-m-d') == '3000-01-01') {
+          $end_date = clone($start_date);
+          $end_date->add(new DateInterval('P1Y'));
+        }
+
+        $minimum_stay = 0;
+        if (isset($field_constraint['minimum_stay']) && $field_constraint['minimum_stay'] !== NULL) {
+          $minimum_stay = $field_constraint['minimum_stay'];
+        }
+
+        $maximum_stay = 0;
+        if (isset($field_constraint['maximum_stay']) && $field_constraint['maximum_stay'] !== NULL) {
+          $maximum_stay = $field_constraint['maximum_stay'];
+        }
+
+        $constraints[] = array(
+          'date_range' => array(
+            'from' => $start_date->format('Y-m-d'),
+            'to' => $end_date->format('Y-m-d'),
+          ),
+          'minimumstay' => $minimum_stay,
+          'maximumstay' => $maximum_stay,
+        );
+      }
+    }
+  }
+
+  return $constraints;
+}
+
+/**
+ * Retrieve restriction information for a given property_id and format appropriately
+ *
+ * @param $property_id
+ * @param $room_id
+ * @param $rate_id
+ * @param $start_date
+ * @param $end_date
+ *
+ * @return array
+ */
+function roomify_channel_connector_restrictions($property_id, $room_id, $rate_id, $start_date, $end_date) {
+  if ($map = roomify_channel_connector_get_map_external($property_id, 'booking_com')) {
+    // Load the map
+    $map = roomify_channel_map_load($map->channel_map_id);
+    foreach ($map->data as $property) {
+      foreach ($property as $type => $rate) {
+        $bat_type = bat_type_load($type, TRUE);
+
+        foreach (roomify_channel_connector_get_type_constraints($bat_type) as $contraint) {
+          $message[] = array(
+            'room_id' => $room_id,
+            'rate_id' => $rate_id,
+          ) + $contraint;
+        }
+      }
+    }
+
+    // Formatting the message based on what the channel connector expects
+    $final_message = array(
+      'hotel_id' => $property_id,
+      'rooms' => $message,
+    );
+
+    return $final_message;
+  }
+
+  return '';
 }
