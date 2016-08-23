@@ -70,7 +70,11 @@ function roomify_channel_connector_permission() {
     'retrieve rate information' => array(
       'title' => t('Retrieve channel rate info'),
       'description' => t('Retrieve channel rate info'),
-    )
+    ),
+    'retrieve restriction information' => array(
+      'title' => t('Retrieve channel restriction info'),
+      'description' => t('Retrieve channel restriction info'),
+    ),
   );
 }
 
@@ -247,6 +251,7 @@ function roomify_channel_connector_roomify_rights(){
         'retrieve type availability information',
         'retrieve channel availability information',
         'retrieve rate information',
+        'retrieve restriction information',
       ),
     );
   }
@@ -1736,6 +1741,8 @@ function roomify_channel_connector_send_notification($site_id, $h_id, $rate_id, 
   watchdog('roomify_channel_connector', 'Sent rate change notification request to ' . $cm_url);
   watchdog('roomify_channel_connector', 'Request object: ' . print_r($request, 1));
   $reply = json_decode($request->data);
+
+  // FIXME: alert user if request fails!!
 }
 
 /**
@@ -1897,7 +1904,7 @@ function roomify_channel_connector_get_type_constraints($type) {
  */
 function roomify_channel_connector_restrictions($property_id, $room_id, $rate_id, $start_date, $end_date) {
   if ($map = roomify_channel_connector_get_map_external($property_id, 'booking_com')) {
-    // Load the map
+    // Load the map.
     $map = roomify_channel_map_load($map->channel_map_id);
     foreach ($map->data as $property) {
       foreach ($property as $type => $rate) {
