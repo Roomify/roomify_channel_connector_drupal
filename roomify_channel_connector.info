@@ -122,6 +122,6 @@ features[field_instance][] = bat_booking-booking_com-field_bcom_status
 features[field_instance][] = bat_booking-booking_com-field_bcom_telephone
 features[field_instance][] = bat_booking-booking_com-field_bcom_total_price
 features[field_instance][] = bat_booking-booking_com-field_bcom_zip
-features[services_endpoint][] = roomify_channel_bcom
+features[services_endpoint][] = roomify_channel_connector
 features[views_view][] = booking_com_bookings
 features_exclude[dependencies][ctools] = ctools
