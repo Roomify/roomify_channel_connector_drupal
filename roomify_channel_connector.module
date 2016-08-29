@@ -1493,7 +1493,7 @@ function roomify_channel_connector_disassociate_bookingcom_id($hotel_id) {
 }
 
 /**
- * Implements hook_entity_update.
+ * Implements hook_entity_update().
  *
  * When an event entity is updated check if we need to notify a channel about the change.
  * @param $entity
@@ -1519,8 +1519,10 @@ function roomify_channel_connector_entity_update($entity, $type) {
   }
 
   if ($type == 'bat_type') {
+    $original_constraints = roomify_channel_connector_get_type_constraints($entity->original);
     $constraints = roomify_channel_connector_get_type_constraints($entity);
-    if (count($constraints)) {
+
+    if (serialize($constraints) != serialize($original_constraints)) {
       roomify_channel_connector_notify_change($entity, 'rate_restriction');
     }
   }
