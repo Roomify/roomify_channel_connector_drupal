@@ -1881,29 +1881,92 @@ function roomify_channel_connector_get_type_constraints($type, $show_messages = 
           $end_date->add(new DateInterval('P1Y'));
         }
 
-        $minimum_stay = 0;
         if (isset($field_constraint['minimum_stay']) && $field_constraint['minimum_stay'] !== NULL) {
           $minimum_stay = $field_constraint['minimum_stay'];
+
+          $constraints[] = array(
+            'date_range' => array(
+              'from' => $start_date->format('Y-m-d'),
+              'to' => $end_date->format('Y-m-d'),
+            ),
+            'minimumstay' => $minimum_stay,
+            'maximumstay' => 0,
+          );
         }
 
-        $maximum_stay = 0;
         if (isset($field_constraint['maximum_stay']) && $field_constraint['maximum_stay'] !== NULL) {
           $maximum_stay = $field_constraint['maximum_stay'];
-        }
 
-        $constraints[] = array(
-          'date_range' => array(
-            'from' => $start_date->format('Y-m-d'),
-            'to' => $end_date->format('Y-m-d'),
-          ),
-          'minimumstay' => $minimum_stay,
-          'maximumstay' => $maximum_stay,
-        );
+          $constraints[] = array(
+            'date_range' => array(
+              'from' => $start_date->format('Y-m-d'),
+              'to' => $end_date->format('Y-m-d'),
+            ),
+            'minimumstay' => 0,
+            'maximumstay' => $maximum_stay,
+          );
+        }
       }
     }
   }
 
-  return $constraints;
+  $new_constraints = array();
+  foreach (array_reverse($constraints) as $constraint) {
+    $start_date = new DateTime($constraint['date_range']['from']);
+    $end_date = new DateTime($constraint['date_range']['to']);
+
+    if (!empty($new_constraints)) {
+      $split_constraint = NULL;
+
+      foreach ($new_constraints as $new_constraint) {
+        $new_start_date = new DateTime($new_constraint['date_range']['from']);
+        $new_end_date = new DateTime($new_constraint['date_range']['to']);
+
+        if ($constraint['minimumstay'] && $new_constraint['minimumstay'] ||
+            ($constraint['maximumstay'] && $new_constraint['maximumstay'])) {
+          if ($start_date >= $new_start_date && $start_date <= $new_end_date) {
+            $constraint['date_range']['from'] = $new_end_date->format('Y-m-d');
+          }
+          elseif ($end_date >= $new_start_date && $end_date <= $new_end_date) {
+            $constraint['date_range']['to'] = $new_start_date->format('Y-m-d');
+          }
+          elseif ($start_date < $new_start_date && $end_date > $new_end_date) {
+            $constraint['date_range']['to'] = $new_start_date->format('Y-m-d');
+
+            if ($split_constraint == NULL) {
+              $split_constraint = array(
+                'date_range' => array(
+                  'from' => $new_end_date->format('Y-m-d'),
+                  'to' => $end_date->format('Y-m-d'),
+                ),
+                'minimumstay' => $constraint['minimumstay'],
+                'maximumstay' => $constraint['maximumstay'],
+              );
+            }
+            else {
+              $split_start_date = new DateTime($split_constraint['date_range']['from']);
+              $split_end_date = new DateTime($split_constraint['date_range']['to']);
+
+              if ($split_start_date < $new_end_date) {
+                $split_constraint['date_range']['from'] = $new_end_date->format('Y-m-d');
+              }
+              if ($split_end_date < $new_start_date) {
+                $split_constraint['date_range']['to'] = $new_start_date->format('Y-m-d');
+              }
+            }
+          }
+        }
+      }
+
+      if ($split_constraint != NULL) {
+        $new_constraints[] = $split_constraint;
+      }
+    }
+
+    $new_constraints[] = $constraint;
+  }
+
+  return $new_constraints;
 }
 
 /**
@@ -1924,6 +1987,22 @@ function roomify_channel_connector_restrictions($property_id, $room_id, $rate_id
     foreach ($map->data as $property) {
       foreach ($property as $type => $rate) {
         $bat_type = bat_type_load($type, TRUE);
+
+        $start_date = new DateTime();
+
+        $end_date = clone($start_date);
+        $end_date->add(new DateInterval('P1Y'));
+
+        $message[] = array(
+          'room_id' => $room_id,
+          'rate_id' => $rate_id,
+          'date_range' => array(
+            'from' => $start_date->format('Y-m-d'),
+            'to' => $end_date->format('Y-m-d'),
+          ),
+          'minimumstay' => 0,
+          'maximumstay' => 0,
+        );
 
         foreach (roomify_channel_connector_get_type_constraints($bat_type) as $constraint) {
           $message[] = array(
