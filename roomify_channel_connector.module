@@ -1763,7 +1763,7 @@ function roomify_channel_connector_create_reservation_event($arrival, $departure
 
   $property = roomify_property_load($type->field_st_property_reference[LANGUAGE_NONE][0]['target_id']);
 
-  $valid_unit_ids = bat_event_get_matching_units($start_date, $end_date, array(AVAILABLE), $type->type_id, 'availability');
+  $valid_unit_ids = bat_event_get_matching_units($start_date, $end_date, array(AVAILABLE), $type->type_id, 'availability', FALSE, FALSE);
 
   if ($valid_unit_ids === FALSE) {
     return FALSE;
