@@ -8,6 +8,7 @@ use Roomify\Bat\Event\Event;
 use Roomify\Bat\Calendar\Calendar;
 use Roomify\Bat\Store\DrupalDBStore;
 use Roomify\Bat\Unit\Unit;
+use Roomify\Bat\Constraint\CheckInDayConstraint;
 
 include_once 'roomify_channel_connector.features.inc';
 
@@ -1500,30 +1501,27 @@ function roomify_channel_connector_disassociate_bookingcom_id($hotel_id) {
  * @param $type
  */
 function roomify_channel_connector_entity_update($entity, $type) {
-  if ($type == 'bat_event' && ($entity->type == 'pricing' || $entity->type == 'availability')) {
-    // Check if we have a site id (which implies we are connected)
-    if (variable_get('roomify_channel_connector_site_id') != '') {
+  // Check if we have a site id (which implies we are connected)
+  if (variable_get('roomify_channel_connector_site_id') != '') {
+    if ($type == 'bat_event' && ($entity->type == 'pricing' || $entity->type == 'availability')) {
       roomify_channel_connector_notify_change($entity, $entity->type);
     }
-  }
 
-  if ($type == 'roomify_rate' && $entity->name == 'Standard') {
-    // Check if we have a site id (which implies we are connected)
-    if (variable_get('roomify_channel_connector_site_id') != '') {
+    if ($type == 'roomify_rate' && $entity->name == 'Standard') {
       $start_date = new DateTime();
       $end_date = clone $start_date;
       $end_date->add(new DateInterval('P1Y'));
 
       roomify_channel_connector_notify_change($entity, $type, $start_date, $end_date);
     }
-  }
 
-  if ($type == 'bat_type') {
-    $original_constraints = roomify_channel_connector_get_type_constraints($entity->original);
-    $constraints = roomify_channel_connector_get_type_constraints($entity);
+    if ($type == 'bat_type') {
+      $original_constraints = roomify_channel_connector_get_type_constraints($entity->original, FALSE);
+      $constraints = roomify_channel_connector_get_type_constraints($entity);
 
-    if (serialize($constraints) != serialize($original_constraints)) {
-      roomify_channel_connector_notify_change($entity, 'rate_restriction');
+      if (serialize($constraints) != serialize($original_constraints)) {
+        roomify_channel_connector_notify_change($entity, 'rate_restriction');
+      }
     }
   }
 }
@@ -1536,30 +1534,29 @@ function roomify_channel_connector_entity_update($entity, $type) {
  * @param $type
  */
 function roomify_channel_connector_entity_insert($entity, $type) {
-  // Adding a new pricing or availability event
-  if ($type == 'bat_event' && ($entity->type == 'pricing' || $entity->type == 'availability')) {
-    if (variable_get('roomify_channel_connector_site_id') != '') {
+  // Check if we have a site id (which implies we are connected)
+  if (variable_get('roomify_channel_connector_site_id') != '') {
+    // Adding a new pricing or availability event
+    if ($type == 'bat_event' && ($entity->type == 'pricing' || $entity->type == 'availability')) {
       $entity->start_date_object = new DateTime($entity->start_date);
       $entity->end_date_object = new DateTime($entity->end_date);
       roomify_channel_connector_notify_change($entity, $entity->type);
     }
-  }
 
-  // We are adding more units so need to tell CM about that
-  if ($type == 'bat_unit') {
-    // When a new unit is added we resend availability information for the year to Booking.com
-    if (variable_get('roomify_channel_connector_site_id') != '') {
+    // We are adding more units so need to tell CM about that
+    if ($type == 'bat_unit') {
+      // When a new unit is added we resend availability information for the year to Booking.com
       $start_date = new DateTime();
       $end_date = clone $start_date;
       $end_date->add(new DateInterval('P1Y'));
       roomify_channel_connector_notify_change($entity, 'new_unit', $start_date, $end_date);
     }
-  }
 
-  if ($type == 'bat_type') {
-    $constraints = roomify_channel_connector_get_type_constraints($entity);
-    if (count($constraints)) {
-      roomify_channel_connector_notify_change($entity, 'rate_restriction');
+    if ($type == 'bat_type') {
+      $constraints = roomify_channel_connector_get_type_constraints($entity);
+      if (count($constraints)) {
+        roomify_channel_connector_notify_change($entity, 'rate_restriction');
+      }
     }
   }
 }
@@ -1575,9 +1572,9 @@ function roomify_channel_connector_entity_delete($entity, $type) {
     }
   }
 
-  // We are adding more units so need to tell CM about that
+  // We are deleting units so need to tell CM about that
   if ($type == 'bat_unit') {
-    // When a new unit is added we resend availability information for the year to Booking.com
+    // When a unit is deleted we resend availability information for the year to Booking.com
     if (variable_get('roomify_channel_connector_site_id') != '') {
       $start_date = new DateTime();
       $end_date = clone $start_date;
@@ -1842,10 +1839,12 @@ function roomify_channel_connector_get_type_from_map($property_id, $room_id, $ma
  *
  * @return array
  */
-function roomify_channel_connector_get_type_constraints($type) {
+function roomify_channel_connector_get_type_constraints($type, $show_messages = TRUE) {
   $field_constraints = field_get_items('bat_type', $type, 'bat_constraints_range');
 
   $constraints = array();
+
+  $no_supported_constraint = FALSE;
 
   if (!empty($field_constraints)) {
     $drupal_units = bat_unit_load_multiple(FALSE, array('type_id' => $type->type_id));
@@ -1855,9 +1854,23 @@ function roomify_channel_connector_get_type_constraints($type) {
     }
 
     foreach ($field_constraints as $field_constraint) {
-      if ($field_constraint['constraint_type'] != BAT_EVENT_STATE_CONSTRAINTS_MUST_START) {
-        $start_date = new DateTime($field_constraint['start_date']);
-        $end_date = new DateTime($field_constraint['end_date']);
+      $start_date = new DateTime($field_constraint['start_date']);
+      $end_date = new DateTime($field_constraint['end_date']);
+
+      if ($field_constraint['constraint_type'] == BAT_EVENT_STATE_CONSTRAINTS_MUST_START) {
+        if ($show_messages) {
+          $property_id = $type->field_st_property_reference[LANGUAGE_NONE][0]['target_id'];
+
+          if ($map = roomify_channel_connector_get_map_external($property_id, 'booking_com')) {
+            $constraint = new CheckInDayConstraint($bat_units, $field_constraint['start_day'], $start_date, $end_date);
+
+            $constraint_string = $constraint->toString();
+            $constraint_description = t($constraint_string['text'], $constraint_string['args']);
+            drupal_set_message(t('The constraint "@description" cannot be sync with booking.com', array('@description' => $constraint_description)), 'warning');
+          }
+        }
+      }
+      else {
         $end_date->add(new DateInterval('P1D'));
 
         if ($start_date->format('Y-m-d') == '1970-01-01') {
@@ -1912,11 +1925,11 @@ function roomify_channel_connector_restrictions($property_id, $room_id, $rate_id
       foreach ($property as $type => $rate) {
         $bat_type = bat_type_load($type, TRUE);
 
-        foreach (roomify_channel_connector_get_type_constraints($bat_type) as $contraint) {
+        foreach (roomify_channel_connector_get_type_constraints($bat_type) as $constraint) {
           $message[] = array(
             'room_id' => $room_id,
             'rate_id' => $rate_id,
-          ) + $contraint;
+          ) + $constraint;
         }
       }
     }
