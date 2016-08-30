@@ -1899,8 +1899,11 @@ function roomify_channel_connector_get_type_constraints($type, $show_messages = 
     }
   }
 
+  $constraint_manager = new ConstraintManager($constraints);
+  $normalized_constraints = $constraint_manager->normalizeConstraints('Roomify\Bat\Constraint\MinMaxDaysConstraint');
+
   $new_constraints = array();
-  foreach (ConstraintManager::normalizeConstraints($constraints) as $constraint) {
+  foreach ($normalized_constraints as $constraint) {
     $new_constraints[] = array(
       'date_range' => array(
         'from' => $constraint->getStartDate()->format('Y-m-d'),
