@@ -512,7 +512,7 @@ function roomify_channel_connector_create($reservations) {
         }
       }
 
-      return drupal_json_encode($reply);
+      return $reply;
     }
 
     // With modified reservations two things can happen. 1. A room is completely cancelled or room data has been altered or changed.
@@ -598,7 +598,7 @@ function roomify_channel_connector_create($reservations) {
           $reply['message'] = 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') cannot be saved as no matching room type exists.';
           $reply['status'] = 'no_matching_room_type';
 
-          return drupal_json_encode($reply);
+          return $reply;
         }
 
         $new_event = roomify_channel_connector_create_reservation_event($room['arrival_date'], $room['departure_date'], $type);
@@ -621,7 +621,7 @@ function roomify_channel_connector_create($reservations) {
           $reply['message'] = 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') cannot be saved as no matching room type exists for ' . $room['id'];
           $reply['status'] = 'no_matching_room_type';
 
-          return drupal_json_encode($reply);
+          return $reply;
         }
 
         // Attempt to create an event (i.e. find an available unit and create event)
@@ -634,7 +634,7 @@ function roomify_channel_connector_create($reservations) {
           $reply['message'] = 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') cannot be saved as no available units found.';
           $reply['status'] = 'no_available_units';
 
-          return drupal_json_encode($reply);
+          return $reply;
         }
 
 
@@ -733,7 +733,7 @@ function roomify_channel_connector_create($reservations) {
     }
   }
 
-  return drupal_json_encode($reply);
+  return $reply;
 }
 
 /**
