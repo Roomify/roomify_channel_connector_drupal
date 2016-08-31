@@ -724,12 +724,15 @@ function roomify_channel_connector_create($reservations) {
         $booking->field_bcom_reserv_extra_info[LANGUAGE_NONE][]['value'] = drupal_json_encode(array($name => $value));
       }
 
-      $booking->save();
+      try {
+        $booking->save();
+      } catch (Exception $e) {
+        $reply['message'] = 'Booking.com reservation ' . $reservation['id'] . ' error: "' . $e->getMessage() . '"';
+        $reply['status'] = 'error';
+        return $reply;
+      }
 
       watchdog('Channel Manager', 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') saved', array(), WATCHDOG_INFO);
-
-      $reply['message'] = 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') saved';
-      $reply['status'] = 'saved';
     }
   }
 
