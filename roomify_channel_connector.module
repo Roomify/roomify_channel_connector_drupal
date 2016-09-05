@@ -732,7 +732,14 @@ function roomify_channel_connector_create($reservations) {
       try {
         $booking->save();
 
+        $booking_wrapper = entity_metadata_wrapper('bat_booking', $booking);
+
+        $type = bat_type_load($booking_wrapper->booking_event_reference->event_bat_unit_reference->type_id->value());
+        $property = roomify_property_load($type->field_st_property_reference[LANGUAGE_NONE][0]['target_id']);
+
         $reply['booking_id'] = $booking->booking_id;
+        $reply['property_id'] = $property->property_id;
+        $reply['property_name'] = $property->name;
       } catch (Exception $e) {
         $reply['message'] = 'Booking.com reservation ' . $reservation['id'] . ' error: "' . $e->getMessage() . '"';
         $reply['status'] = 'error';
