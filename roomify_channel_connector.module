@@ -512,6 +512,11 @@ function roomify_channel_connector_create($reservations) {
         }
       }
 
+      if (!isset($bookings['bat_booking']) || count($bookings['bat_booking']) == 0) {
+        $reply['message'] = 'Booking.com reservation ' . $reservation['id'] . ' not found';
+        $reply['status'] = 'booking_not_found';
+      }
+
       return $reply;
     }
 
@@ -726,6 +731,8 @@ function roomify_channel_connector_create($reservations) {
 
       try {
         $booking->save();
+
+        $reply['booking_id'] = $booking->booking_id;
       } catch (Exception $e) {
         $reply['message'] = 'Booking.com reservation ' . $reservation['id'] . ' error: "' . $e->getMessage() . '"';
         $reply['status'] = 'error';
