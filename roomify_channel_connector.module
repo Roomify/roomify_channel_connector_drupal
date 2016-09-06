@@ -1174,7 +1174,7 @@ function roomify_channel_bookingcom_admin_form($form, &$form_state, $property) {
       $options = array();
       $options['0'] = 'N/A';
       foreach ($reply->roomrates->rooms as $room_id => $room) {
-        $options[$room_id] = $room->name;
+        $options[$room_id] = $room->name . ' (' . $room_id . ')';
       }
 
       // Create a field for each bat type to map to a room type and the standard rate for that room
@@ -1223,7 +1223,7 @@ function roomify_channel_bookingcom_admin_form($form, &$form_state, $property) {
       $options = array();
       $options['0'] = 'N/A';
       foreach ($reply->roomrates->rooms as $room_id => $room) {
-        $options[$room_id] = $room->name;
+        $options[$room_id] = $room->name . ' (' . $room_id . ')';
       }
 
       // Create a field for each bat type to map to a room type and the standard rate for that room
@@ -1370,16 +1370,16 @@ function roomify_channel_bookingcom_admin_form_validate($form, &$form_state) {
   }
 
   // User should not map two rooms to the same option
-  $previous_value = 0;
+  $previous_values = array();
   foreach ($form_state['values'] as $key => $value) {
     $k = explode('_', $key);
-    if (isset($k[3]) && $k[3]=='roomid') {
+    if (isset($k[3]) && $k[3] == 'roomid') {
       if ($value != 0) {
-        if ($value == $previous_value) {
+        if (in_array($value, $previous_values)) {
           form_set_error('roomify_channel_bookingcom_roomid_' . $k[4] . '_' . $k[5], t('Another room is already mapped to this Booking.com Room.'));
         }
         else {
-          $previous_value = $value;
+          $previous_values[] = $value;
         }
       }
     }
