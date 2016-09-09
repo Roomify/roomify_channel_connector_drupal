@@ -205,7 +205,7 @@ function roomify_channel_connector_validate_site_id($site_id, $site_token, $app_
 }
 
 /**
- * Implements hook_services_api_key_valid_alter
+ * Implements hook_services_api_key_valid_alter().
  * 
  * This ignores the settings at the service level and instead takes into consideration 
  * the API key set for the channel manager.
@@ -219,6 +219,7 @@ function roomify_channel_connector_services_api_key_valid_alter(&$valid, &$args)
     $api_key = variable_get('roomify_channel_connector_site_token');
     // Compare the api token to what is provided via the api call
     $args[0]['api_key'] = (!empty($_SERVER['HTTP_API_KEY'])) ? $_SERVER['HTTP_API_KEY'] : '';
+
     $valid = services_api_key_auth_compare_key($api_key, $args[0]['api_key']);
 
     // Get list of users with given role.
@@ -233,6 +234,7 @@ function roomify_channel_connector_services_api_key_valid_alter(&$valid, &$args)
     while ($uid = $result->fetchColumn()) {
       $user = user_load($uid);
     }
+
     $args[0]['user'] = $user->name;
   }
 }
@@ -1702,15 +1704,33 @@ function roomify_channel_connector_notify_change($entity, $type, $start_date = N
         );
       }
       else {
-        roomify_channel_connector_send_notification(
-          variable_get('roomify_channel_connector_site_id'),
-          $external_id,
-          $rate_changed,
-          $room_changed,
-          isset($start_date) ? $start_date->format('Y-m-d') : $entity->start_date_object->format('Y-m-d'),
-          isset($end_date) ? $end_date->format('Y-m-d') : $entity->end_date_object->format('Y-m-d'),
-          ((isset($entity->type) && $entity->type == 'default') || $type == 'setup' || $type == 'availability') ? 'availability' : 'rates'
-        );
+        $today = new DateTime();
+        $today->setTime(0, 0);
+
+        if ((isset($end_date) && $end_date > $today) || (!isset($end_date) && $entity->end_date_object > $today)) {
+          if ((isset($start_date) && $start_date < $today) || (!isset($start_date) && $entity->start_date_object < $today)) {
+            roomify_channel_connector_send_notification(
+              variable_get('roomify_channel_connector_site_id'),
+              $external_id,
+              $rate_changed,
+              $room_changed,
+              $today->format('Y-m-d'),
+              isset($end_date) ? $end_date->format('Y-m-d') : $entity->end_date_object->format('Y-m-d'),
+              ((isset($entity->type) && $entity->type == 'default') || $type == 'setup' || $type == 'availability') ? 'availability' : 'rates'
+            );
+          }
+          else {
+            roomify_channel_connector_send_notification(
+              variable_get('roomify_channel_connector_site_id'),
+              $external_id,
+              $rate_changed,
+              $room_changed,
+              isset($start_date) ? $start_date->format('Y-m-d') : $entity->start_date_object->format('Y-m-d'),
+              isset($end_date) ? $end_date->format('Y-m-d') : $entity->end_date_object->format('Y-m-d'),
+              ((isset($entity->type) && $entity->type == 'default') || $type == 'setup' || $type == 'availability') ? 'availability' : 'rates'
+            );
+          }
+        }
       }
 
       // If we are in setup we would have sent an availability notification so lets go ahead and send a rates one as well.
