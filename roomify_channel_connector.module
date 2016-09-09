@@ -1688,62 +1688,64 @@ function roomify_channel_connector_notify_change($entity, $type, $start_date = N
       $internal_id = $map->internal_property_id;
       $external_id = $map->external_property_id;
 
-      // Get rate changes
-      $room_changed = $map->data[$internal_id][$bat_type->type_id]['roomid'];
-      $rate_changed = $map->data[$internal_id][$bat_type->type_id]['standardrate'];
+      if (isset($map->data[$internal_id][$bat_type->type_id])) {
+        // Get rate changes
+        $room_changed = $map->data[$internal_id][$bat_type->type_id]['roomid'];
+        $rate_changed = $map->data[$internal_id][$bat_type->type_id]['standardrate'];
 
-      if ($type == 'rate_restriction') {
-        roomify_channel_connector_send_notification(
-          variable_get('roomify_channel_connector_site_id'),
-          $external_id,
-          $rate_changed,
-          $room_changed,
-          NULL,
-          NULL,
-          'rate_restriction'
-        );
-      }
-      else {
-        $today = new DateTime();
-        $today->setTime(0, 0);
+        if ($type == 'rate_restriction') {
+          roomify_channel_connector_send_notification(
+            variable_get('roomify_channel_connector_site_id'),
+            $external_id,
+            $rate_changed,
+            $room_changed,
+            NULL,
+            NULL,
+            'rate_restriction'
+          );
+        }
+        else {
+          $today = new DateTime();
+          $today->setTime(0, 0);
 
-        if ((isset($end_date) && $end_date > $today) || (!isset($end_date) && $entity->end_date_object > $today)) {
-          if ((isset($start_date) && $start_date < $today) || (!isset($start_date) && $entity->start_date_object < $today)) {
-            roomify_channel_connector_send_notification(
-              variable_get('roomify_channel_connector_site_id'),
-              $external_id,
-              $rate_changed,
-              $room_changed,
-              $today->format('Y-m-d'),
-              isset($end_date) ? $end_date->format('Y-m-d') : $entity->end_date_object->format('Y-m-d'),
-              ((isset($entity->type) && $entity->type == 'default') || $type == 'setup' || $type == 'availability') ? 'availability' : 'rates'
-            );
-          }
-          else {
-            roomify_channel_connector_send_notification(
-              variable_get('roomify_channel_connector_site_id'),
-              $external_id,
-              $rate_changed,
-              $room_changed,
-              isset($start_date) ? $start_date->format('Y-m-d') : $entity->start_date_object->format('Y-m-d'),
-              isset($end_date) ? $end_date->format('Y-m-d') : $entity->end_date_object->format('Y-m-d'),
-              ((isset($entity->type) && $entity->type == 'default') || $type == 'setup' || $type == 'availability') ? 'availability' : 'rates'
-            );
+          if ((isset($end_date) && $end_date > $today) || (!isset($end_date) && $entity->end_date_object > $today)) {
+            if ((isset($start_date) && $start_date < $today) || (!isset($start_date) && $entity->start_date_object < $today)) {
+              roomify_channel_connector_send_notification(
+                variable_get('roomify_channel_connector_site_id'),
+                $external_id,
+                $rate_changed,
+                $room_changed,
+                $today->format('Y-m-d'),
+                isset($end_date) ? $end_date->format('Y-m-d') : $entity->end_date_object->format('Y-m-d'),
+                ((isset($entity->type) && $entity->type == 'default') || $type == 'setup' || $type == 'availability') ? 'availability' : 'rates'
+              );
+            }
+            else {
+              roomify_channel_connector_send_notification(
+                variable_get('roomify_channel_connector_site_id'),
+                $external_id,
+                $rate_changed,
+                $room_changed,
+                isset($start_date) ? $start_date->format('Y-m-d') : $entity->start_date_object->format('Y-m-d'),
+                isset($end_date) ? $end_date->format('Y-m-d') : $entity->end_date_object->format('Y-m-d'),
+                ((isset($entity->type) && $entity->type == 'default') || $type == 'setup' || $type == 'availability') ? 'availability' : 'rates'
+              );
+            }
           }
         }
-      }
 
-      // If we are in setup we would have sent an availability notification so lets go ahead and send a rates one as well.
-      if ($type == 'setup') {
-        roomify_channel_connector_send_notification(
-          variable_get('roomify_channel_connector_site_id'),
-          $external_id,
-          $rate_changed,
-          $room_changed,
-          isset($start_date) ? $start_date->format('Y-m-d') : $entity->start_date_object->format('Y-m-d'),
-          isset($end_date) ? $end_date->format('Y-m-d') : $entity->end_date_object->format('Y-m-d'),
-          'rates'
-        );
+        // If we are in setup we would have sent an availability notification so lets go ahead and send a rates one as well.
+        if ($type == 'setup') {
+          roomify_channel_connector_send_notification(
+            variable_get('roomify_channel_connector_site_id'),
+            $external_id,
+            $rate_changed,
+            $room_changed,
+            isset($start_date) ? $start_date->format('Y-m-d') : $entity->start_date_object->format('Y-m-d'),
+            isset($end_date) ? $end_date->format('Y-m-d') : $entity->end_date_object->format('Y-m-d'),
+            'rates'
+          );
+        }
       }
     }
   }
