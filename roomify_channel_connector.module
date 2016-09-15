@@ -1654,6 +1654,7 @@ function roomify_channel_connector_notify_change($entity, $type, $start_date = N
         $bat_type = bat_type_load($rate->rate_bat_type_reference[LANGUAGE_NONE][0]['target_id']);
       }
       break;
+
     case 'availability':
       // Availability events need that minute added back
       $entity->end_date_object->add(new DateInterval('PT1M'));
@@ -1664,17 +1665,21 @@ function roomify_channel_connector_notify_change($entity, $type, $start_date = N
         $bat_type = bat_type_load($type_id);
       }
       break;
+
     case 'new_unit':
       $type_id = $entity->type_id;
       $bat_type = bat_type_load($type_id);
       break;
+
     case 'setup':
       // In the setup we send the rate entity id directly
       $bat_type = bat_type_load($entity);
       break;
+
     case 'roomify_rate':
       $bat_type = bat_type_load($entity->rate_bat_type_reference[LANGUAGE_NONE][0]['target_id']);
       break;
+
     case 'rate_restriction':
       $bat_type = $entity;
   }
