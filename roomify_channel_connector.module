@@ -150,6 +150,21 @@ function roomify_channel_connector_configuration_form($form, &$form_state) {
     }
   }
 
+  $role = user_role_load_by_name(variable_get('service_api_key_role', 'roomify manager'));
+  $query = 'SELECT DISTINCT(ur.uid) 
+          FROM {users_roles} AS ur 
+          WHERE ur.rid = :rids LIMIT 1';
+  $result = db_query($query, array(':rids' => $role->rid));
+
+  if ($result->fetchColumn() === FALSE) {
+    $form['roomify_channel_connector_site_id']['#disabled'] = TRUE;
+    $form['roomify_channel_connector_site_token']['#disabled'] = TRUE;
+    $form['roomify_channel_connector_app_url']['#disabled'] = TRUE;
+    $form['submit']['#disabled'] = TRUE;
+
+    drupal_set_message(t('No user with the @role role found, please contact support.', array('@role' => $role->name)), 'error');
+  }
+
   return $form;
 }
 
@@ -1118,6 +1133,16 @@ function roomify_channel_connector_get_map_external($property_id, $bundle) {
  * Channel management forms for type channel management tab.
  */
 function roomify_channel_bookingcom_admin_form($form, &$form_state, $property) {
+  $role = user_role_load_by_name(variable_get('service_api_key_role', 'roomify manager'));
+  $query = 'SELECT DISTINCT(ur.uid) 
+          FROM {users_roles} AS ur 
+          WHERE ur.rid = :rids LIMIT 1';
+  $result = db_query($query, array(':rids' => $role->rid));
+
+  if ($result->fetchColumn() === FALSE) {
+    drupal_set_message(t('No user with the @role role found, please contact support.', array('@role' => $role->name)), 'error');
+  }
+
   $form['#attached']['css'] = array(drupal_get_path('module', 'roomify_channel_connector') . '/css/roomify_channel_connector.css');
 
   $form['#prefix'] = '<div id="roomify_channel_bookingcom_admin_form">';
