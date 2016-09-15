@@ -1525,6 +1525,7 @@ function roomify_channel_connector_entity_update($entity, $type) {
   // Check if we have a site id (which implies we are connected)
   if (variable_get('roomify_channel_connector_site_id') != '') {
     if ($type == 'bat_event' && ($entity->type == 'pricing' || $entity->type == 'availability')) {
+      roomify_channel_connector_notify_change($entity->original, $entity->type);
       roomify_channel_connector_notify_change($entity, $entity->type);
     }
 
