@@ -150,6 +150,21 @@ function roomify_channel_connector_configuration_form($form, &$form_state) {
     }
   }
 
+  $role = user_role_load_by_name(variable_get('service_api_key_role', 'roomify manager'));
+  $query = 'SELECT DISTINCT(ur.uid) 
+          FROM {users_roles} AS ur 
+          WHERE ur.rid = :rids LIMIT 1';
+  $result = db_query($query, array(':rids' => $role->rid));
+
+  if ($result->fetchColumn() === FALSE) {
+    $form['roomify_channel_connector_site_id']['#disabled'] = TRUE;
+    $form['roomify_channel_connector_site_token']['#disabled'] = TRUE;
+    $form['roomify_channel_connector_app_url']['#disabled'] = TRUE;
+    $form['submit']['#disabled'] = TRUE;
+
+    drupal_set_message(t('No user with the @role role found, please contact support.', array('@role' => $role->name)), 'error');
+  }
+
   return $form;
 }
 
@@ -205,7 +220,7 @@ function roomify_channel_connector_validate_site_id($site_id, $site_token, $app_
 }
 
 /**
- * Implements hook_services_api_key_valid_alter
+ * Implements hook_services_api_key_valid_alter().
  * 
  * This ignores the settings at the service level and instead takes into consideration 
  * the API key set for the channel manager.
@@ -219,6 +234,7 @@ function roomify_channel_connector_services_api_key_valid_alter(&$valid, &$args)
     $api_key = variable_get('roomify_channel_connector_site_token');
     // Compare the api token to what is provided via the api call
     $args[0]['api_key'] = (!empty($_SERVER['HTTP_API_KEY'])) ? $_SERVER['HTTP_API_KEY'] : '';
+
     $valid = services_api_key_auth_compare_key($api_key, $args[0]['api_key']);
 
     // Get list of users with given role.
@@ -233,6 +249,7 @@ function roomify_channel_connector_services_api_key_valid_alter(&$valid, &$args)
     while ($uid = $result->fetchColumn()) {
       $user = user_load($uid);
     }
+
     $args[0]['user'] = $user->name;
   }
 }
@@ -512,6 +529,11 @@ function roomify_channel_connector_create($reservations) {
         }
       }
 
+      if (!isset($bookings['bat_booking']) || count($bookings['bat_booking']) == 0) {
+        $reply['message'] = 'Booking.com reservation ' . $reservation['id'] . ' not found';
+        $reply['status'] = 'booking_not_found';
+      }
+
       return $reply;
     }
 
@@ -726,6 +748,15 @@ function roomify_channel_connector_create($reservations) {
 
       try {
         $booking->save();
+
+        $booking_wrapper = entity_metadata_wrapper('bat_booking', $booking);
+
+        $type = bat_type_load($booking_wrapper->booking_event_reference->event_bat_unit_reference->type_id->value());
+        $property = roomify_property_load($type->field_st_property_reference[LANGUAGE_NONE][0]['target_id']);
+
+        $reply['booking_id'] = $booking->booking_id;
+        $reply['property_id'] = $property->property_id;
+        $reply['property_name'] = $property->name;
       } catch (Exception $e) {
         $reply['message'] = 'Booking.com reservation ' . $reservation['id'] . ' error: "' . $e->getMessage() . '"';
         $reply['status'] = 'error';
@@ -1102,6 +1133,16 @@ function roomify_channel_connector_get_map_external($property_id, $bundle) {
  * Channel management forms for type channel management tab.
  */
 function roomify_channel_bookingcom_admin_form($form, &$form_state, $property) {
+  $role = user_role_load_by_name(variable_get('service_api_key_role', 'roomify manager'));
+  $query = 'SELECT DISTINCT(ur.uid) 
+          FROM {users_roles} AS ur 
+          WHERE ur.rid = :rids LIMIT 1';
+  $result = db_query($query, array(':rids' => $role->rid));
+
+  if ($result->fetchColumn() === FALSE) {
+    drupal_set_message(t('No user with the @role role found, please contact support.', array('@role' => $role->name)), 'error');
+  }
+
   $form['#attached']['css'] = array(drupal_get_path('module', 'roomify_channel_connector') . '/css/roomify_channel_connector.css');
 
   $form['#prefix'] = '<div id="roomify_channel_bookingcom_admin_form">';
@@ -1160,7 +1201,7 @@ function roomify_channel_bookingcom_admin_form($form, &$form_state, $property) {
       $options = array();
       $options['0'] = 'N/A';
       foreach ($reply->roomrates->rooms as $room_id => $room) {
-        $options[$room_id] = $room->name;
+        $options[$room_id] = $room->name . ' (' . $room_id . ')';
       }
 
       // Create a field for each bat type to map to a room type and the standard rate for that room
@@ -1209,7 +1250,7 @@ function roomify_channel_bookingcom_admin_form($form, &$form_state, $property) {
       $options = array();
       $options['0'] = 'N/A';
       foreach ($reply->roomrates->rooms as $room_id => $room) {
-        $options[$room_id] = $room->name;
+        $options[$room_id] = $room->name . ' (' . $room_id . ')';
       }
 
       // Create a field for each bat type to map to a room type and the standard rate for that room
@@ -1356,16 +1397,16 @@ function roomify_channel_bookingcom_admin_form_validate($form, &$form_state) {
   }
 
   // User should not map two rooms to the same option
-  $previous_value = 0;
+  $previous_values = array();
   foreach ($form_state['values'] as $key => $value) {
     $k = explode('_', $key);
-    if (isset($k[3]) && $k[3]=='roomid') {
+    if (isset($k[3]) && $k[3] == 'roomid') {
       if ($value != 0) {
-        if ($value == $previous_value) {
+        if (in_array($value, $previous_values)) {
           form_set_error('roomify_channel_bookingcom_roomid_' . $k[4] . '_' . $k[5], t('Another room is already mapped to this Booking.com Room.'));
         }
         else {
-          $previous_value = $value;
+          $previous_values[] = $value;
         }
       }
     }
@@ -1509,6 +1550,7 @@ function roomify_channel_connector_entity_update($entity, $type) {
   // Check if we have a site id (which implies we are connected)
   if (variable_get('roomify_channel_connector_site_id') != '') {
     if ($type == 'bat_event' && ($entity->type == 'pricing' || $entity->type == 'availability')) {
+      roomify_channel_connector_notify_change($entity->original, $entity->type);
       roomify_channel_connector_notify_change($entity, $entity->type);
     }
 
@@ -1638,6 +1680,7 @@ function roomify_channel_connector_notify_change($entity, $type, $start_date = N
         $bat_type = bat_type_load($rate->rate_bat_type_reference[LANGUAGE_NONE][0]['target_id']);
       }
       break;
+
     case 'availability':
       // Availability events need that minute added back
       $entity->end_date_object->add(new DateInterval('PT1M'));
@@ -1648,17 +1691,21 @@ function roomify_channel_connector_notify_change($entity, $type, $start_date = N
         $bat_type = bat_type_load($type_id);
       }
       break;
+
     case 'new_unit':
       $type_id = $entity->type_id;
       $bat_type = bat_type_load($type_id);
       break;
+
     case 'setup':
       // In the setup we send the rate entity id directly
       $bat_type = bat_type_load($entity);
       break;
+
     case 'roomify_rate':
       $bat_type = bat_type_load($entity->rate_bat_type_reference[LANGUAGE_NONE][0]['target_id']);
       break;
+
     case 'rate_restriction':
       $bat_type = $entity;
   }
@@ -1672,44 +1719,64 @@ function roomify_channel_connector_notify_change($entity, $type, $start_date = N
       $internal_id = $map->internal_property_id;
       $external_id = $map->external_property_id;
 
-      // Get rate changes
-      $room_changed = $map->data[$internal_id][$bat_type->type_id]['roomid'];
-      $rate_changed = $map->data[$internal_id][$bat_type->type_id]['standardrate'];
+      if (isset($map->data[$internal_id][$bat_type->type_id])) {
+        // Get rate changes
+        $room_changed = $map->data[$internal_id][$bat_type->type_id]['roomid'];
+        $rate_changed = $map->data[$internal_id][$bat_type->type_id]['standardrate'];
 
-      if ($type == 'rate_restriction') {
-        roomify_channel_connector_send_notification(
-          variable_get('roomify_channel_connector_site_id'),
-          $external_id,
-          $rate_changed,
-          $room_changed,
-          NULL,
-          NULL,
-          'rate_restriction'
-        );
-      }
-      else {
-        roomify_channel_connector_send_notification(
-          variable_get('roomify_channel_connector_site_id'),
-          $external_id,
-          $rate_changed,
-          $room_changed,
-          isset($start_date) ? $start_date->format('Y-m-d') : $entity->start_date_object->format('Y-m-d'),
-          isset($end_date) ? $end_date->format('Y-m-d') : $entity->end_date_object->format('Y-m-d'),
-          ((isset($entity->type) && $entity->type == 'default') || $type == 'setup' || $type == 'availability') ? 'availability' : 'rates'
-        );
-      }
+        if ($type == 'rate_restriction') {
+          roomify_channel_connector_send_notification(
+            variable_get('roomify_channel_connector_site_id'),
+            $external_id,
+            $rate_changed,
+            $room_changed,
+            NULL,
+            NULL,
+            'rate_restriction'
+          );
+        }
+        else {
+          $today = new DateTime();
+          $today->setTime(0, 0);
 
-      // If we are in setup we would have sent an availability notification so lets go ahead and send a rates one as well.
-      if ($type == 'setup') {
-        roomify_channel_connector_send_notification(
-          variable_get('roomify_channel_connector_site_id'),
-          $external_id,
-          $rate_changed,
-          $room_changed,
-          isset($start_date) ? $start_date->format('Y-m-d') : $entity->start_date_object->format('Y-m-d'),
-          isset($end_date) ? $end_date->format('Y-m-d') : $entity->end_date_object->format('Y-m-d'),
-          'rates'
-        );
+          if ((isset($end_date) && $end_date > $today) || (!isset($end_date) && $entity->end_date_object > $today)) {
+            if ((isset($start_date) && $start_date < $today) || (!isset($start_date) && $entity->start_date_object < $today)) {
+              roomify_channel_connector_send_notification(
+                variable_get('roomify_channel_connector_site_id'),
+                $external_id,
+                $rate_changed,
+                $room_changed,
+                $today->format('Y-m-d'),
+                isset($end_date) ? $end_date->format('Y-m-d') : $entity->end_date_object->format('Y-m-d'),
+                ((isset($entity->type) && $entity->type == 'default') || $type == 'setup' || $type == 'availability') ? 'availability' : 'rates'
+              );
+            }
+            else {
+              roomify_channel_connector_send_notification(
+                variable_get('roomify_channel_connector_site_id'),
+                $external_id,
+                $rate_changed,
+                $room_changed,
+                isset($start_date) ? $start_date->format('Y-m-d') : $entity->start_date_object->format('Y-m-d'),
+                isset($end_date) ? $end_date->format('Y-m-d') : $entity->end_date_object->format('Y-m-d'),
+                ((isset($entity->type) && $entity->type == 'default') || $type == 'setup' || $type == 'availability') ? 'availability' : 'rates'
+              );
+            }
+          }
+        }
+
+        // If we are in setup we would have sent an availability notification so lets go ahead and send a rates one as well.
+        if ($type == 'setup') {
+          roomify_channel_connector_send_notification(
+            variable_get('roomify_channel_connector_site_id'),
+            $external_id,
+            $rate_changed,
+            $room_changed,
+            isset($start_date) ? $start_date->format('Y-m-d') : $entity->start_date_object->format('Y-m-d'),
+            isset($end_date) ? $end_date->format('Y-m-d') : $entity->end_date_object->format('Y-m-d'),
+            'rates'
+          );
+        }
       }
     }
   }

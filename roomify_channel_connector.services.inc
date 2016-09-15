@@ -19,7 +19,7 @@ function roomify_channel_connector_default_services_endpoint() {
   $endpoint->authentication = array(
     'services_api_key_auth' => array(
       'api_key' => '123123',
-      'api_parameter_type' => 'HTTPHeader',
+      'api_key_source' => 'header',
       'user' => '',
     ),
   );
