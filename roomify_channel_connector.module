@@ -210,7 +210,11 @@ function roomify_channel_connector_configuration_form_submit($form, &$form_state
  * @return bool
  */
 function roomify_channel_connector_validate_site_id($site_id, $site_token, $app_url) {
-  $request = drupal_http_request($app_url . 'admin/authcheck/' . $site_id . '/' . $site_token);
+  $headers = array(
+    'Authorization' => $site_token,
+  );
+
+  $request = drupal_http_request($app_url . 'admin/authcheck/' . $site_id, array('headers' => $headers));
 
   if (isset($request->status_message) && $request->status_message == 'OK') {
     return TRUE;
@@ -1481,10 +1485,16 @@ function roomify_channel_bookingcom_admin_form_submit(&$form, &$form_state) {
  * Retrieve Room / Rates ID from channel manager
  */
 function roomify_channel_connector_get_bookingcom_ids($hotel_id) {
+  $site_token = variable_get('roomify_channel_connector_site_token', $site_token);
+
+  $headers = array(
+    'Authorization' => $site_token,
+  );
+
   $cm_url = variable_get('roomify_channel_connector_app_url', 'http://cm.roomify.us/');
 
   $cm_export_url = $cm_url . 'bc/roomrates/' . $hotel_id;
-  $request = drupal_http_request($cm_export_url);
+  $request = drupal_http_request($cm_export_url, array('headers' => $headers));
   if ($request->data) {
     $reply = json_decode($request->data);
 
@@ -1503,12 +1513,18 @@ function roomify_channel_connector_get_bookingcom_ids($hotel_id) {
  * Associate Hotel ID with Site ID on channel manager.
  */
 function roomify_channel_connector_associate_bookingcom_id($hotel_id) {
+  $site_token = variable_get('roomify_channel_connector_site_token', $site_token);
+
+  $headers = array(
+    'Authorization' => $site_token,
+  );
+
   $cm_url = variable_get('roomify_channel_connector_app_url', 'http://cm.roomify.us/');
 
   if ($site_id = variable_get('roomify_channel_connector_site_id')) {
 
     $cm_export_url = $cm_url . 'bc/register-hotel-id/' . $site_id . '/' . $hotel_id;
-    $request = drupal_http_request($cm_export_url);
+    $request = drupal_http_request($cm_export_url, array('headers' => $headers));
     if ($request->data) {
       $reply = json_decode($request->data);
       if ($reply[0] == 'Associated Hotel Id' || $reply[0] == 'Hotel Id already associated') {
@@ -1523,12 +1539,18 @@ function roomify_channel_connector_associate_bookingcom_id($hotel_id) {
  * Disassociate Hotel ID with Site ID on channel manager.
  */
 function roomify_channel_connector_disassociate_bookingcom_id($hotel_id) {
+  $site_token = variable_get('roomify_channel_connector_site_token', $site_token);
+
+  $headers = array(
+    'Authorization' => $site_token,
+  );
+
   $cm_url = variable_get('roomify_channel_connector_app_url', 'http://cm.roomify.us/');
 
   if ($site_id = variable_get('roomify_channel_connector_site_id')) {
 
     $cm_export_url = $cm_url . 'bc/unregister-hotel-id/' . $site_id . '/' . $hotel_id;
-    $request = drupal_http_request($cm_export_url);
+    $request = drupal_http_request($cm_export_url, array('headers' => $headers));
     if ($request->data) {
       $reply = json_decode($request->data);
       if ($reply[0] == 'disassociated Hotel Id') {
@@ -1808,7 +1830,13 @@ function roomify_channel_connector_send_notification($site_id, $h_id, $rate_id, 
     $cm_url .= $key . '=' . $value . '&';
   }
 
-  $request = drupal_http_request($cm_url);
+  $site_token = variable_get('roomify_channel_connector_site_token', $site_token);
+
+  $headers = array(
+    'Authorization' => $site_token,
+  );
+
+  $request = drupal_http_request($cm_url, array('headers' => $headers));
   watchdog('roomify_channel_connector', 'Sent rate change notification request to ' . $cm_url);
   watchdog('roomify_channel_connector', 'Request object: ' . print_r($request, 1));
   $reply = json_decode($request->data);
