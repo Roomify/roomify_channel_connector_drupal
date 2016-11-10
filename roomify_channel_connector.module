@@ -1525,9 +1525,8 @@ function roomify_channel_connector_associate_bookingcom_id($hotel_id) {
 
     $cm_export_url = $cm_url . 'bc/register-hotel-id/' . $site_id . '/' . $hotel_id;
     $request = drupal_http_request($cm_export_url, array('headers' => $headers));
-    if ($request->data) {
-      $reply = json_decode($request->data);
-      if ($reply[0] == 'Associated Hotel Id' || $reply[0] == 'Hotel Id already associated') {
+    if ($reply = json_decode($request->data)) {
+      if ($reply == 'Associated Hotel Id' || $reply == 'Hotel Id already associated') {
         return TRUE;
       }
     }
