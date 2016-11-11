@@ -1485,7 +1485,7 @@ function roomify_channel_bookingcom_admin_form_submit(&$form, &$form_state) {
  * Retrieve Room / Rates ID from channel manager
  */
 function roomify_channel_connector_get_bookingcom_ids($hotel_id) {
-  $site_token = variable_get('roomify_channel_connector_site_token', $site_token);
+  $site_token = variable_get('roomify_channel_connector_site_token', '');
 
   $headers = array(
     'Authorization' => $site_token,
@@ -1513,7 +1513,7 @@ function roomify_channel_connector_get_bookingcom_ids($hotel_id) {
  * Associate Hotel ID with Site ID on channel manager.
  */
 function roomify_channel_connector_associate_bookingcom_id($hotel_id) {
-  $site_token = variable_get('roomify_channel_connector_site_token', $site_token);
+  $site_token = variable_get('roomify_channel_connector_site_token', '');
 
   $headers = array(
     'Authorization' => $site_token,
@@ -1538,7 +1538,7 @@ function roomify_channel_connector_associate_bookingcom_id($hotel_id) {
  * Disassociate Hotel ID with Site ID on channel manager.
  */
 function roomify_channel_connector_disassociate_bookingcom_id($hotel_id) {
-  $site_token = variable_get('roomify_channel_connector_site_token', $site_token);
+  $site_token = variable_get('roomify_channel_connector_site_token', '');
 
   $headers = array(
     'Authorization' => $site_token,
@@ -1550,9 +1550,8 @@ function roomify_channel_connector_disassociate_bookingcom_id($hotel_id) {
 
     $cm_export_url = $cm_url . 'bc/unregister-hotel-id/' . $site_id . '/' . $hotel_id;
     $request = drupal_http_request($cm_export_url, array('headers' => $headers));
-    if ($request->data) {
-      $reply = json_decode($request->data);
-      if ($reply[0] == 'disassociated Hotel Id') {
+    if ($reply = json_decode($request->data)) {
+      if ($reply == 'disassociated Hotel Id') {
         return TRUE;
       }
     }
@@ -1813,23 +1812,10 @@ function roomify_channel_connector_notify_change($entity, $type, $start_date = N
  * @param $type
  */
 function roomify_channel_connector_send_notification($site_id, $h_id, $rate_id, $room_id, $start_date, $end_date, $type) {
-  $message = array(
-    'site_id' => $site_id,
-    'h_id' => $h_id,
-    'rate_id' => $rate_id,
-    'room_id' => $room_id,
-    'start_date' => $start_date,
-    'end_date' => $end_date,
-    'type' => $type,
-  );
-
   $cm_url = variable_get('roomify_channel_connector_app_url', 'http://cm.roomify.us/');
-  $cm_url .= 'bc/rate-change-notification?';
-  foreach ($message as $key => $value) {
-    $cm_url .= $key . '=' . $value . '&';
-  }
+  $cm_url .= "rate-change-notification/${site_id}/${h_id}/${rate_id}/${room_id}/${start_date}/${end_date}/${type}";
 
-  $site_token = variable_get('roomify_channel_connector_site_token', $site_token);
+  $site_token = variable_get('roomify_channel_connector_site_token', '');
 
   $headers = array(
     'Authorization' => $site_token,
