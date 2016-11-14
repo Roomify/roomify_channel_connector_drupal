@@ -1812,6 +1812,12 @@ function roomify_channel_connector_notify_change($entity, $type, $start_date = N
  * @param $type
  */
 function roomify_channel_connector_send_notification($site_id, $h_id, $rate_id, $room_id, $start_date, $end_date, $type) {
+  if (!$start_date) {
+    $start_date = 'none';
+  }
+  if (!$end_date) {
+    $end_date = 'none';
+  }
   $cm_url = variable_get('roomify_channel_connector_app_url', 'http://cm.roomify.us/');
   $cm_url .= "rate-change-notification/${site_id}/${h_id}/${rate_id}/${room_id}/${start_date}/${end_date}/${type}";
 
