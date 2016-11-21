@@ -203,6 +203,9 @@ class RoomifyChannelMapType extends Entity {
    */
   public $label;
 
+  /**
+   *
+   */
   public function __construct($values = array()) {
     parent::__construct($values, 'roomify_channel_map_type');
   }
@@ -214,10 +217,16 @@ class RoomifyChannelMapType extends Entity {
  */
 class RoomifyChannelMapController extends EntityAPIController {
 
+  /**
+   *
+   */
   public function __construct($entityType) {
     parent::__construct($entityType);
   }
 
+  /**
+   *
+   */
   public function create(array $values = array()) {
     $values += array(
       'channel_map_id' => '',
@@ -248,10 +257,16 @@ class RoomifyChannelMapController extends EntityAPIController {
  */
 class RoomifyChannelMapTypeController extends EntityAPIControllerExportable {
 
+  /**
+   *
+   */
   public function __construct($entityType) {
     parent::__construct($entityType);
   }
 
+  /**
+   *
+   */
   public function create(array $values = array()) {
     $values += array(
       'id' => '',

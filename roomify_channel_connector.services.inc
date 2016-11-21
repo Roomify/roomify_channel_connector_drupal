@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @file
  * roomify_channel_connector.services.inc
@@ -80,7 +81,6 @@ function roomify_channel_connector_default_services_endpoint() {
     ),
   );
   $endpoint->debug = 0;
-
 
   $export['roomify_channel_connector'] = $endpoint;
 
