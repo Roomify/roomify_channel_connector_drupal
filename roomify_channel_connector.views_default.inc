@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @file
  * roomify_channel_connector.views_default.inc

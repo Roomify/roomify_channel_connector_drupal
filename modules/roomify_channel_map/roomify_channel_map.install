@@ -127,7 +127,6 @@ function roomify_channel_map_schema() {
     ),
   );
 
-
   return $schema;
 }
 

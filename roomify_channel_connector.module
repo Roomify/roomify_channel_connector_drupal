@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @file
  * Code for the roomify_channel_connector feature.
@@ -13,7 +14,6 @@ use Roomify\Bat\Constraint\CheckInDayConstraint;
 use Roomify\Bat\Constraint\ConstraintManager;
 
 include_once 'roomify_channel_connector.features.inc';
-
 
 /**
  * Implements hook_menu().
@@ -259,12 +259,11 @@ function roomify_channel_connector_services_api_key_valid_alter(&$valid, &$args)
 }
 
 /**
- * Implements hook_roomify_rights.
+ * Implements hook_roomify_rights().
  *
  * @return mixed
  */
-function roomify_channel_connector_roomify_rights(){
-
+function roomify_channel_connector_roomify_rights() {
   $rights['roomify_channel_connector'] = array();
 
   if (variable_get('roomify_channel_connector_site_id') != NULL) {
@@ -587,8 +586,8 @@ function roomify_channel_connector_create($reservations) {
       }
     }
 
-
-    // Now we move on with dealing with reservation data knowing that we may be creating or modifying existing rooms or dealing with
+    // Now we move on with dealing with reservation data knowing
+    // that we may be creating or modifying existing rooms or dealing with
     // a new reservation.
     foreach ($reservation['rooms'] as $room) {
       // Check if we are dealing with an existing reservation
@@ -596,7 +595,7 @@ function roomify_channel_connector_create($reservations) {
       $efq->entityCondition('entity_type', 'bat_booking')
         ->entityCondition('bundle', 'booking_com', '=')
         ->fieldCondition('field_bcom_reservation_id', 'value', $reservation['id'], '=')
-        ->fieldCondition('field_bcom_room_reservation_id', 'value',  $room['roomreservation_id'], '=');
+        ->fieldCondition('field_bcom_room_reservation_id', 'value', $room['roomreservation_id'], '=');
 
       $result = $efq->execute();
 
@@ -663,7 +662,6 @@ function roomify_channel_connector_create($reservations) {
           return $reply;
         }
 
-
         $created_time = $reservation['date'] . ' ' . $reservation['time'];
 
         $booking = bat_booking_create(array(
@@ -677,7 +675,6 @@ function roomify_channel_connector_create($reservations) {
         $reply['message'] = 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') created';
         $reply['status'] = 'created';
       }
-
 
       $booking->field_bcom_room_reservation_id[LANGUAGE_NONE][0]['value'] = $room['roomreservation_id'];
 
@@ -1132,7 +1129,6 @@ function roomify_channel_connector_get_map_external($property_id, $bundle) {
   }
 }
 
-
 /**
  * Channel management forms for type channel management tab.
  */
@@ -1432,11 +1428,9 @@ function roomify_channel_bookingcom_admin_form_submit(&$form, &$form_state) {
     $map->internal_property_id = $form_state['values']['property_id'];
     $map->external_property_id = $form_state['values']['roomify_channel_bookingcom_hotel_id_' . $form_state['values']['property_id']];
 
-
     $map->changed = time();
 
     entity_save('roomify_channel_map', $map);
-
   }
   else {
     // Create a channel map entity
