@@ -182,6 +182,7 @@ class RoomifyChannelMap extends Entity {
   protected function defaultLabel() {
     return $this->name;
   }
+
 }
 
 /**

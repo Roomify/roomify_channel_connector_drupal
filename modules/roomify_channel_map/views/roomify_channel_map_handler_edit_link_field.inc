@@ -6,15 +6,24 @@
  * as fields.
  */
 
+/**
+ *
+ */
 class roomify_channel_map_handler_edit_link_field extends views_handler_field {
 
-  function construct() {
+  /**
+   * {@inheritdoc}
+   */
+  public function construct() {
     parent::construct();
 
     $this->additional_fields['channel_map_id'] = 'channel_map_id';
   }
 
-  function option_definition() {
+  /**
+   * {@inheritdoc}
+   */
+  public function option_definition() {
     $options = parent::option_definition();
 
     $options['text'] = array('default' => '', 'translatable' => TRUE);
@@ -22,7 +31,10 @@ class roomify_channel_map_handler_edit_link_field extends views_handler_field {
     return $options;
   }
 
-  function options_form(&$form, &$form_state) {
+  /**
+   * {@inheritdoc}
+   */
+  public function options_form(&$form, &$form_state) {
     parent::options_form($form, $form_state);
 
     $form['text'] = array(
@@ -32,12 +44,18 @@ class roomify_channel_map_handler_edit_link_field extends views_handler_field {
     );
   }
 
-  function query() {
+  /**
+   * {@inheritdoc}
+   */
+  public function query() {
     $this->ensure_my_table();
     $this->add_additional_fields();
   }
 
-  function render($values) {
+  /**
+   * {@inheritdoc}
+   */
+  public function render($values) {
     $text = !empty($this->options['text']) ? $this->options['text'] : t('edit');
     $channel_map_id = $values->{$this->aliases['channel_map_id']};
 

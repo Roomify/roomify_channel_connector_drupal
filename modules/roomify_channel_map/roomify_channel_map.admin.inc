@@ -9,6 +9,7 @@
  * UI controller.
  */
 class RoomifyChannelMapUIController extends EntityDefaultUIController {
+
   /**
    * Overrides hook_menu() defaults.
    */
@@ -66,6 +67,7 @@ class RoomifyChannelMapUIController extends EntityDefaultUIController {
       '#content' => $items,
     );
   }
+
 }
 
 /**
@@ -118,7 +120,7 @@ function roomify_channel_map_edit_form($form, &$form_state, $channel_map) {
 
   // Add the field related form elements.
   $form_state['roomify_channel_map'] = $channel_map;
-  field_attach_form('roomify_channel_map', $channel_map, $form, $form_state, isset($channel_map->language)? $channel_map->language : NULL);
+  field_attach_form('roomify_channel_map', $channel_map, $form, $form_state, isset($channel_map->language) ? $channel_map->language : NULL);
   $form['additional_settings'] = array(
     '#type' => 'vertical_tabs',
     '#weight' => 99,
