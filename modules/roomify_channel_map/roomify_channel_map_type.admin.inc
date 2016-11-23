@@ -9,6 +9,7 @@
  * UI controller.
  */
 class RoomifyChannelMapTypeUIController extends EntityDefaultUIController {
+
   /**
    * Overrides hook_menu() defaults.
    */
@@ -22,6 +23,7 @@ class RoomifyChannelMapTypeUIController extends EntityDefaultUIController {
 
     return $items;
   }
+
 }
 
 /**
