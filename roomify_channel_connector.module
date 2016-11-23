@@ -525,7 +525,7 @@ function roomify_channel_connector_create($reservations) {
           $event->event_state_reference[LANGUAGE_NONE][0]['state_id'] = $available_state['id'];
           $event->save();
           $cm_room->save();
-          watchdog('Channel Manager', 'Booking.com reservation ' . $reservation['id'] . ' cancelled', array(), WATCHDOG_INFO);
+          watchdog('Channel Manager', 'Booking.com reservation @reservation_id cancelled', array('@reservation_id' => $reservation['id']), WATCHDOG_INFO);
 
           $reply['message'] = 'Booking.com reservation ' . $reservation['id'] . ' cancelled';
           $reply['status'] = 'cancelled';
@@ -579,7 +579,7 @@ function roomify_channel_connector_create($reservations) {
             $event->event_state_reference[LANGUAGE_NONE][0]['state_id'] = $available_state['id'];
             $event->save();
             $cm_room->save();
-            watchdog('Channel Manager', 'Booking.com room reservation ' . $cm_room->field_bcom_room_reservation_id[LANGUAGE_NONE][0]['value'] . ' cancelled', array(), WATCHDOG_INFO);
+            watchdog('Channel Manager', 'Booking.com room reservation @reservation_id cancelled', array('@reservation_id' => $cm_room->field_bcom_room_reservation_id[LANGUAGE_NONE][0]['value']), WATCHDOG_INFO);
 
             $reply['message'] = 'Booking.com room reservation ' . $cm_room->field_bcom_room_reservation_id[LANGUAGE_NONE][0]['value'] . ' cancelled';
             $reply['status'] = 'cancelled';
@@ -621,7 +621,7 @@ function roomify_channel_connector_create($reservations) {
         $type = roomify_channel_connector_get_type_from_map($reservation['hotel_id'], $booking->field_bcom_room_id[LANGUAGE_NONE][0]['value'], 'booking_com');
 
         if ($type == FALSE) {
-          watchdog('Channel Manager', 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') cannot be saved as no matching room type exists.', array(), WATCHDOG_INFO);
+          watchdog('Channel Manager', 'Booking.com reservation @reservation_id (@roomreservation_id) cannot be saved as no matching room type exists.', array('@reservation_id' => $reservation['id'], '@roomreservation_id' => $room['roomreservation_id']), WATCHDOG_INFO);
 
           $reply['message'] = 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') cannot be saved as no matching room type exists.';
           $reply['status'] = 'no_matching_room_type';
@@ -631,7 +631,7 @@ function roomify_channel_connector_create($reservations) {
 
         $new_event = roomify_channel_connector_create_reservation_event($room['arrival_date'], $room['departure_date'], $type);
         $booking->booking_event_reference[LANGUAGE_NONE][0]['target_id'] = $new_event->event_id;
-        watchdog('Channel Manager', 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') updated', array(), WATCHDOG_INFO);
+        watchdog('Channel Manager', 'Booking.com reservation @reservation_id (@roomreservation_id) updated', array('@reservation_id' => $reservation['id'], '@roomreservation_id' => $room['roomreservation_id']), WATCHDOG_INFO);
 
         $reply['message'] = 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') updated';
         $reply['status'] = 'updated';
@@ -644,7 +644,7 @@ function roomify_channel_connector_create($reservations) {
         $type = roomify_channel_connector_get_type_from_map($reservation['hotel_id'], $room['id'], 'booking_com');
 
         if ($type == FALSE) {
-          watchdog('Channel Manager', 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') cannot be saved as no matching room type exists.', array(), WATCHDOG_INFO);
+          watchdog('Channel Manager', 'Booking.com reservation @reservation_id (@roomreservation_id) cannot be saved as no matching room type exists.', array('@reservation_id' => $reservation['id'], '@roomreservation_id' => $room['roomreservation_id']), WATCHDOG_INFO);
 
           $reply['message'] = 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') cannot be saved as no matching room type exists for ' . $room['id'];
           $reply['status'] = 'no_matching_room_type';
@@ -657,7 +657,7 @@ function roomify_channel_connector_create($reservations) {
 
         // If no valid units ids were found stop here.
         if ($event == FALSE) {
-          watchdog('Channel Manager', 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') cannot be saved as no available units found.', array(), WATCHDOG_INFO);
+          watchdog('Channel Manager', 'Booking.com reservation @reservation_id (@roomreservation_id) cannot be saved as no available units found.', array('@reservation_id' => $reservation['id'], '@roomreservation_id' => $room['roomreservation_id']), WATCHDOG_INFO);
 
           $reply['message'] = 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') cannot be saved as no available units found.';
           $reply['status'] = 'no_available_units';
@@ -674,7 +674,7 @@ function roomify_channel_connector_create($reservations) {
           'created' => strtotime($created_time),
         ));
         $booking->booking_event_reference[LANGUAGE_NONE][0]['target_id'] = $event->event_id;
-        watchdog('Channel Manager', 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') created', array(), WATCHDOG_INFO);
+        watchdog('Channel Manager', 'Booking.com reservation @reservation_id (@roomreservation_id) created', array('@reservation_id' => $reservation['id'], '@roomreservation_id' => $room['roomreservation_id']), WATCHDOG_INFO);
 
         $reply['message'] = 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') created';
         $reply['status'] = 'created';
@@ -769,7 +769,7 @@ function roomify_channel_connector_create($reservations) {
         return $reply;
       }
 
-      watchdog('Channel Manager', 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') saved', array(), WATCHDOG_INFO);
+      watchdog('Channel Manager', 'Booking.com reservation @reservation_id (@roomreservation_id) saved', array('@reservation_id' => $reservation['id'], '@roomreservation_id' => $room['roomreservation_id']), WATCHDOG_INFO);
     }
   }
 
@@ -1587,7 +1587,7 @@ function roomify_channel_connector_entity_update($entity, $type) {
 function roomify_channel_connector_entity_insert($entity, $type) {
   // Check if we have a site id (which implies we are connected).
   if (variable_get('roomify_channel_connector_site_id') != '') {
-    // Adding a new pricing or availability event
+    // Adding a new pricing or availability event.
     if ($type == 'bat_event' && ($entity->type == 'pricing' || $entity->type == 'availability')) {
       $entity->start_date_object = new DateTime($entity->start_date);
       $entity->end_date_object = new DateTime($entity->end_date);
@@ -1813,8 +1813,8 @@ function roomify_channel_connector_send_notification($site_id, $h_id, $rate_id, 
   }
 
   $request = drupal_http_request($cm_url);
-  watchdog('roomify_channel_connector', 'Sent rate change notification request to ' . $cm_url);
-  watchdog('roomify_channel_connector', 'Request object: ' . print_r($request, 1));
+  watchdog('roomify_channel_connector', 'Sent rate change notification request to @url', array('@url' => $cm_url));
+  watchdog('roomify_channel_connector', 'Request object: @request', array('@request' => print_r($request, 1)));
   $reply = json_decode($request->data);
 
   // FIXME: alert user if request fails!!
