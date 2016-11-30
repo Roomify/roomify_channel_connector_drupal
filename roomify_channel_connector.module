@@ -2058,3 +2058,64 @@ function roomify_channel_connector_restrictions($property_id, $room_id, $rate_id
 
   return '';
 }
+
+/**
+ * Implements hook_cron_job_scheduler_info().
+ */
+function roomify_channel_connector_cron_job_scheduler_info() {
+  $schedulers = array();
+  $schedulers['roomify_channel_connector_update_availability'] = array(
+    'worker callback' => 'roomify_channel_connector_update_availability',
+    'jobs' => array(
+      array('type' => 'update_availability', 'period' => 28800, 'periodic' => TRUE),
+    ),
+  );
+  return $schedulers;
+}
+
+/**
+ * @param array $job
+ */
+function roomify_channel_connector_update_availability(array $job) {
+  $start_date = new DateTime();
+  $end_date = clone $start_date;
+  $end_date->add(new DateInterval('P1Y'));
+
+  $efq = new EntityFieldQuery();
+  $efq->entityCondition('entity_type', 'roomify_channel_map')
+    ->entityCondition('bundle', 'booking_com', '=');
+
+  $results = $efq->execute();
+
+  if (isset($results['roomify_channel_map'])) {
+    foreach ($results['roomify_channel_map'] as $map) {
+      $map = roomify_channel_map_load($map->channel_map_id);
+      roomify_channel_connector_send_availability_notifications($map, $start_date, $end_date);
+    }
+  }
+}
+
+/**
+ * @param $map
+ * @param $start_date
+ * @param $end_date
+ */
+function roomify_channel_connector_send_availability_notifications($map, $start_date, $end_date) {
+  $internal_id = $map->internal_property_id;
+  $external_id = $map->external_property_id;
+
+  foreach ($map->data[$internal_id] as $map_data) {
+    $room_changed = $map_data['roomid'];
+    $rate_changed = $map_data['standardrate'];
+
+    roomify_channel_connector_send_notification(
+      variable_get('roomify_channel_connector_site_id'),
+      $external_id,
+      $rate_changed,
+      $room_changed,
+      $start_date->format('Y-m-d'),
+      $end_date->format('Y-m-d'),
+      'availability'
+    );
+  }
+}
