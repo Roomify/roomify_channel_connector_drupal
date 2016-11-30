@@ -9,6 +9,7 @@ dependencies[] = entity
 dependencies[] = entityreference
 dependencies[] = features
 dependencies[] = field_group
+dependencies[] = job_scheduler
 dependencies[] = roomify_channel_map
 dependencies[] = services
 dependencies[] = services_api_key_auth
