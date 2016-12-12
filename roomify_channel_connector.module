@@ -1747,7 +1747,8 @@ function roomify_channel_connector_notify_change($entity, $type, $start_date = N
             $room_changed,
             NULL,
             NULL,
-            'rate_restriction'
+            'rate_restriction',
+            $map->type
           );
         }
         else {
@@ -1763,7 +1764,8 @@ function roomify_channel_connector_notify_change($entity, $type, $start_date = N
                 $room_changed,
                 $today->format('Y-m-d'),
                 isset($end_date) ? $end_date->format('Y-m-d') : $entity->end_date_object->format('Y-m-d'),
-                ((isset($entity->type) && $entity->type == 'default') || $type == 'setup' || $type == 'availability') ? 'availability' : 'rates'
+                ((isset($entity->type) && $entity->type == 'default') || $type == 'setup' || $type == 'availability') ? 'availability' : 'rates',
+                $map->type
               );
             }
             else {
@@ -1774,7 +1776,8 @@ function roomify_channel_connector_notify_change($entity, $type, $start_date = N
                 $room_changed,
                 isset($start_date) ? $start_date->format('Y-m-d') : $entity->start_date_object->format('Y-m-d'),
                 isset($end_date) ? $end_date->format('Y-m-d') : $entity->end_date_object->format('Y-m-d'),
-                ((isset($entity->type) && $entity->type == 'default') || $type == 'setup' || $type == 'availability') ? 'availability' : 'rates'
+                ((isset($entity->type) && $entity->type == 'default') || $type == 'setup' || $type == 'availability') ? 'availability' : 'rates',
+                $map->type
               );
             }
           }
@@ -1789,7 +1792,8 @@ function roomify_channel_connector_notify_change($entity, $type, $start_date = N
             $room_changed,
             isset($start_date) ? $start_date->format('Y-m-d') : $entity->start_date_object->format('Y-m-d'),
             isset($end_date) ? $end_date->format('Y-m-d') : $entity->end_date_object->format('Y-m-d'),
-            'rates'
+            'rates',
+            $map->type
           );
         }
       }
@@ -1805,8 +1809,9 @@ function roomify_channel_connector_notify_change($entity, $type, $start_date = N
  * @param $start_date
  * @param $end_date
  * @param $type
+ * @param $service
  */
-function roomify_channel_connector_send_notification($site_id, $h_id, $rate_id, $room_id, $start_date, $end_date, $type) {
+function roomify_channel_connector_send_notification($site_id, $h_id, $rate_id, $room_id, $start_date, $end_date, $type, $service) {
   if (!$start_date) {
     $start_date = 'none';
   }
@@ -1814,7 +1819,7 @@ function roomify_channel_connector_send_notification($site_id, $h_id, $rate_id, 
     $end_date = 'none';
   }
   $cm_url = variable_get('roomify_channel_connector_app_url', 'http://cm.roomify.us/');
-  $cm_url .= "rate-change-notification/${site_id}/${h_id}/${rate_id}/${room_id}/${start_date}/${end_date}/${type}";
+  $cm_url .= "rate-change-notification/${site_id}/${h_id}/${rate_id}/${room_id}/${start_date}/${end_date}/${type}/${service}";
 
   $site_token = variable_get('roomify_channel_connector_site_token', '');
 
@@ -2082,8 +2087,7 @@ function roomify_channel_connector_update_availability(array $job) {
   $end_date->add(new DateInterval('P1Y'));
 
   $efq = new EntityFieldQuery();
-  $efq->entityCondition('entity_type', 'roomify_channel_map')
-    ->entityCondition('bundle', 'booking_com', '=');
+  $efq->entityCondition('entity_type', 'roomify_channel_map');
 
   $results = $efq->execute();
 
@@ -2115,7 +2119,8 @@ function roomify_channel_connector_send_availability_notifications($map, $start_
       $room_changed,
       $start_date->format('Y-m-d'),
       $end_date->format('Y-m-d'),
-      'availability'
+      'availability',
+      $map->type
     );
   }
 }

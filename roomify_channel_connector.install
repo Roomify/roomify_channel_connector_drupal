@@ -27,3 +27,18 @@ function roomify_channel_connector_update_7001() {
   );
   JobScheduler::get('roomify_channel_connector_update_availability')->set($job);
 }
+
+/**
+ * Rename channel map type from 'booking_com' to 'bookingCom'.
+ */
+function roomify_channel_connector_update_7002() {
+  db_update('roomify_channel_map_types')
+    ->fields(array('type' => 'bookingCom'))
+    ->condition('type', 'bookingcom')
+    ->execute();
+
+  db_update('roomify_channel_maps')
+    ->fields(array('type' => 'bookingCom'))
+    ->condition('type', 'booking_com')
+    ->execute();
+}
