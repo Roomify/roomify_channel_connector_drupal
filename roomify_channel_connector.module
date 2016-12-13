@@ -615,7 +615,7 @@ function roomify_channel_connector_create($reservations) {
         $event->save();
 
         // Create a new event (i.e. find an available unit and create event)
-        $type = roomify_channel_connector_get_type_from_map($reservation['hotel_id'], $booking->field_bcom_room_id[LANGUAGE_NONE][0]['value'], 'booking_com');
+        $type = roomify_channel_connector_get_type_from_map($reservation['hotel_id'], $booking->field_bcom_room_id[LANGUAGE_NONE][0]['value'], 'bookingCom');
 
         if ($type == FALSE) {
           watchdog('Channel Manager', 'Booking.com reservation @reservation_id (@roomreservation_id) cannot be saved as no matching room type exists.', array('@reservation_id' => $reservation['id'], '@roomreservation_id' => $room['roomreservation_id']), WATCHDOG_INFO);
@@ -638,7 +638,7 @@ function roomify_channel_connector_create($reservations) {
         // First thing is to locate the unit to place the booking in
 
         // Get the room type
-        $type = roomify_channel_connector_get_type_from_map($reservation['hotel_id'], $room['id'], 'booking_com');
+        $type = roomify_channel_connector_get_type_from_map($reservation['hotel_id'], $room['id'], 'bookingCom');
 
         if ($type == FALSE) {
           watchdog('Channel Manager', 'Booking.com reservation @reservation_id (@roomreservation_id) cannot be saved as no matching room type exists.', array('@reservation_id' => $reservation['id'], '@roomreservation_id' => $room['roomreservation_id']), WATCHDOG_INFO);
@@ -784,7 +784,7 @@ function roomify_channel_connector_create($reservations) {
  * @return array
  */
 function roomify_channel_connector_availability($property_id, $room_id, $rate_id, $start_date, $end_date) {
-  $map = roomify_channel_connector_get_map_external($property_id, 'booking_com');
+  $map = roomify_channel_connector_get_map_external($property_id, 'bookingCom');
   $roomify_room_id = 0;
   if ($map != FALSE) {
     // Load the map.
@@ -960,7 +960,7 @@ function roomify_channel_type_availability($property_id, $type_id, $start_date, 
 function roomify_channel_connector_rates($property_id, $room_id, $rate_id, $start_date, $end_date) {
 
   $roomify_rate_id = NULL;
-  $map = roomify_channel_connector_get_map_external($property_id, 'booking_com');
+  $map = roomify_channel_connector_get_map_external($property_id, 'bookingCom');
 
   if ($map != FALSE) {
     // Load the map
@@ -1113,7 +1113,6 @@ function roomify_channel_connector_get_map_internal($property_id, $bundle) {
  * @return bool
  */
 function roomify_channel_connector_get_map_external($property_id, $bundle) {
-
   // Check if we have an existing map
   $efq = new EntityFieldQuery();
   $efq->entityCondition('entity_type', 'roomify_channel_map')
@@ -1155,7 +1154,7 @@ function roomify_channel_bookingcom_admin_form($form, &$form_state, $property) {
   }
 
   // Check if there is a channel map for Booking.com for this property.
-  $map = roomify_channel_connector_get_map_internal($property->property_id, 'booking_com');
+  $map = roomify_channel_connector_get_map_internal($property->property_id, 'bookingCom');
   if ($map != FALSE) {
     $map = roomify_channel_map_load($map->channel_map_id);
   }
@@ -1350,7 +1349,7 @@ function roomify_channel_bookingcom_admin_form_connect_submit($form, &$form_stat
  * Submit for the "Disconnect" button on roomify_channel_bookingcom_admin_form form.
  */
 function roomify_channel_bookingcom_admin_form_disconnect_submit($form, &$form_state) {
-  $map = roomify_channel_connector_get_map_internal($form_state['values']['property_id'], 'booking_com');
+  $map = roomify_channel_connector_get_map_internal($form_state['values']['property_id'], 'bookingCom');
 
   $channel_map = roomify_channel_map_load($map->channel_map_id);
   roomify_channel_map_delete($channel_map);
@@ -1381,7 +1380,7 @@ function roomify_channel_bookingcom_admin_form_validate($form, &$form_state) {
     }
 
     // Also check to see that no other property is using this property id
-    $map = roomify_channel_connector_get_map_external($external_property_id, 'booking_com');
+    $map = roomify_channel_connector_get_map_external($external_property_id, 'bookingCom');
     if ($map != FALSE) {
       $map = roomify_channel_map_load($map->channel_map_id);
       if ($map->internal_property_id != $internal_property_id) {
@@ -1421,7 +1420,7 @@ function roomify_channel_bookingcom_admin_form_submit(&$form, &$form_state) {
   global $user;
 
   // Check if there is a property map already
-  $map = roomify_channel_connector_get_map_internal($form_state['values']['property_id'], 'booking_com');
+  $map = roomify_channel_connector_get_map_internal($form_state['values']['property_id'], 'bookingCom');
 
   // Update the existing map
   if ($map != FALSE) {
@@ -1439,7 +1438,7 @@ function roomify_channel_bookingcom_admin_form_submit(&$form, &$form_state) {
       'channel_map_id' => '',
       'internal_property_id' => $form_state['values']['property_id'],
       'external_property_id' => $form_state['values']['roomify_channel_bookingcom_hotel_id_' . $form_state['values']['property_id']],
-      'type' => 'booking_com',
+      'type' => 'bookingCom',
       'uid' => $user->uid,
       'created' => time(),
       'is_new' => TRUE,
@@ -1647,7 +1646,7 @@ function roomify_channel_connector_entity_delete($entity, $type) {
 
   // Disassociate booking.com hotel ID.
   if ($type == 'roomify_channel_map') {
-    if ($entity->type == 'booking_com') {
+    if ($entity->type == 'bookingCom') {
       roomify_channel_connector_disassociate_bookingcom_id($entity->external_property_id);
     }
   }
@@ -1727,7 +1726,7 @@ function roomify_channel_connector_notify_change($entity, $type, $start_date = N
 
   if ($bat_type != FALSE) {
     // With a bat type in place let us process to load the map.
-    $map = roomify_channel_connector_get_map_internal($bat_type->field_st_property_reference[LANGUAGE_NONE][0]['target_id'], 'booking_com');
+    $map = roomify_channel_connector_get_map_internal($bat_type->field_st_property_reference[LANGUAGE_NONE][0]['target_id'], 'bookingCom');
     if ($map != FALSE) {
       // A map is in place let us pull relevant rate info and sent to CM.
       $map = roomify_channel_map_load($map->channel_map_id);
@@ -1954,7 +1953,7 @@ function roomify_channel_connector_get_type_constraints($type, $show_messages = 
         if ($show_messages) {
           $property_id = $type->field_st_property_reference[LANGUAGE_NONE][0]['target_id'];
 
-          if ($map = roomify_channel_connector_get_map_external($property_id, 'booking_com')) {
+          if ($map = roomify_channel_connector_get_map_external($property_id, 'bookingCom')) {
             $constraint = new CheckInDayConstraint($bat_units, $field_constraint['start_day'], $start_date, $end_date);
 
             $constraint_string = $constraint->toString();
@@ -2020,7 +2019,7 @@ function roomify_channel_connector_get_type_constraints($type, $show_messages = 
  * @return array
  */
 function roomify_channel_connector_restrictions($property_id, $room_id, $rate_id, $start_date, $end_date) {
-  if ($map = roomify_channel_connector_get_map_external($property_id, 'booking_com')) {
+  if ($map = roomify_channel_connector_get_map_external($property_id, 'bookingCom')) {
     // Load the map.
     $map = roomify_channel_map_load($map->channel_map_id);
     foreach ($map->data as $property) {
