@@ -500,7 +500,7 @@ function roomify_channel_connector_services_resources() {
  */
 function roomify_channel_connector_create($reservations) {
   watchdog('Channel Manager', 'Bookingcom Create Reservation Called', array(), WATCHDOG_INFO);
-  $reply  = array();
+  $reply = array();
 
   foreach ($reservations as $reservation) {
 
