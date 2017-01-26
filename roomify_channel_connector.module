@@ -926,8 +926,8 @@ function roomify_channel_type_availability($property_id, $type_id, $start_date, 
       $to_date = new \DateTime($day);
       $to_date = $to_date->add(new \DateInterval('P1D'))->format('Y-m-d');
       $message[$i] = array(
-        'room_id' => $room_id,
-        'rate_id' => $rate_id,
+        'room_id' => NULL,
+        'rate_id' => NULL,
         'date_range' => array(
           'from' => $start_date,
           'to' => $to_date,
