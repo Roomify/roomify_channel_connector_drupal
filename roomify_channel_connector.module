@@ -556,7 +556,8 @@ function roomify_channel_connector_create($reservations) {
       if (isset($bookings['bat_booking'])) {
         // Cycle through the rooms coming from Booking.com.
         $bookingrooms = array();
-        foreach ($reservation['rooms'] as $room) {
+        $rooms = isset($reservation['room']['roomreservation_id']) ? array($reservation['room']) : $reservation['room'];
+        foreach ($rooms as $room) {
           $bookingrooms[] = $room['roomreservation_id'];
         }
 
@@ -578,7 +579,7 @@ function roomify_channel_connector_create($reservations) {
             $cm_room->save();
             watchdog('Channel Manager', 'Booking.com room reservation @reservation_id cancelled', array('@reservation_id' => $cm_room->field_bcom_room_reservation_id[LANGUAGE_NONE][0]['value']), WATCHDOG_INFO);
 
-            $reply['message'] = 'Booking.com room reservation ' . $cm_room->field_bcom_room_reservation_id[LANGUAGE_NONE][0]['value'] . ' cancelled';
+            $reply['message'] = 'Booking.com reservation ' . $cm_room->field_bcom_room_reservation_id[LANGUAGE_NONE][0]['value'] . ' cancelled';
             $reply['status'] = 'cancelled';
           }
         }
@@ -589,7 +590,11 @@ function roomify_channel_connector_create($reservations) {
     // Now we move on with dealing with reservation data knowing
     // that we may be creating or modifying existing rooms or dealing with
     // a new reservation.
-    foreach ($reservation['rooms'] as $room) {
+    //
+    // Normalize rooms format.
+    $rooms = isset($reservation['room']['roomreservation_id']) ? array($reservation['room']) : $reservation['room'];
+    foreach ($rooms as $room) {
+
       // Check if we are dealing with an existing reservation
       $efq = new EntityFieldQuery();
       $efq->entityCondition('entity_type', 'bat_booking')
@@ -630,7 +635,8 @@ function roomify_channel_connector_create($reservations) {
         $booking->booking_event_reference[LANGUAGE_NONE][0]['target_id'] = $new_event->event_id;
         watchdog('Channel Manager', 'Booking.com reservation @reservation_id (@roomreservation_id) updated', array('@reservation_id' => $reservation['id'], '@roomreservation_id' => $room['roomreservation_id']), WATCHDOG_INFO);
 
-        $reply['message'] = 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') updated';
+        $reply['message'] = 'Booking.com reservation ' . $reservation['id'] . ' updated';
+        $reply['message'] .= ' Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') updated';
         $reply['status'] = 'updated';
       }
       else {
