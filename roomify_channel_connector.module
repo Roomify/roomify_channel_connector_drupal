@@ -527,17 +527,21 @@ function roomify_channel_connector_create($reservations) {
           $cm_room->save();
           watchdog('Channel Manager', 'Booking.com reservation @reservation_id cancelled', array('@reservation_id' => $reservation['id']), WATCHDOG_INFO);
 
-          $reply['message'] = 'Booking.com reservation ' . $reservation['id'] . ' cancelled';
-          $reply['status'] = 'cancelled';
+          $reply[] = array(
+            'message' => 'Booking.com reservation ' . $reservation['id'] . ' cancelled',
+            'status' => 'cancelled',
+          );
         }
       }
 
       if (!isset($bookings['bat_booking']) || count($bookings['bat_booking']) == 0) {
-        $reply['message'] = 'Booking.com reservation ' . $reservation['id'] . ' not found';
-        $reply['status'] = 'booking_not_found';
+        $reply[] = array(
+          'message' => 'Booking.com reservation ' . $reservation['id'] . ' not found',
+          'status' => 'booking_not_found',
+        );
       }
 
-      return $reply;
+      continue;
     }
 
     // With modified reservations two things can happen. 1. A room is completely cancelled or room data has been altered or changed.
@@ -579,8 +583,10 @@ function roomify_channel_connector_create($reservations) {
             $cm_room->save();
             watchdog('Channel Manager', 'Booking.com room reservation @reservation_id cancelled', array('@reservation_id' => $cm_room->field_bcom_room_reservation_id[LANGUAGE_NONE][0]['value']), WATCHDOG_INFO);
 
-            $reply['message'] = 'Booking.com reservation ' . $cm_room->field_bcom_room_reservation_id[LANGUAGE_NONE][0]['value'] . ' cancelled';
-            $reply['status'] = 'cancelled';
+            $reply[] = array(
+              'message' => 'Booking.com reservation ' . $cm_room->field_bcom_room_reservation_id[LANGUAGE_NONE][0]['value'] . ' cancelled',
+              'status' => 'cancelled',
+            );
           }
         }
 
@@ -625,19 +631,22 @@ function roomify_channel_connector_create($reservations) {
         if ($type == FALSE) {
           watchdog('Channel Manager', 'Booking.com reservation @reservation_id (@roomreservation_id) cannot be saved as no matching room type exists.', array('@reservation_id' => $reservation['id'], '@roomreservation_id' => $room['roomreservation_id']), WATCHDOG_INFO);
 
-          $reply['message'] = 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') cannot be saved as no matching room type exists.';
-          $reply['status'] = 'no_matching_room_type';
+          $reply[] = array(
+            'message' => 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') cannot be saved as no matching room type exists.',
+            'status' => 'no_matching_room_type',
+          );
 
-          return $reply;
+          continue;
         }
 
         $new_event = roomify_channel_connector_create_reservation_event($room['arrival_date'], $room['departure_date'], $type);
         $booking->booking_event_reference[LANGUAGE_NONE][0]['target_id'] = $new_event->event_id;
         watchdog('Channel Manager', 'Booking.com reservation @reservation_id (@roomreservation_id) updated', array('@reservation_id' => $reservation['id'], '@roomreservation_id' => $room['roomreservation_id']), WATCHDOG_INFO);
 
-        $reply['message'] = 'Booking.com reservation ' . $reservation['id'] . ' updated';
-        $reply['message'] .= ' Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') updated';
-        $reply['status'] = 'updated';
+        $reply[] = array(
+          'message' => 'Booking.com reservation ' . $reservation['id'] . ' updated - Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') updated',
+          'status' => 'updated',
+        );
       }
       else {
         // Need to gear up to create a new booking.
@@ -649,10 +658,12 @@ function roomify_channel_connector_create($reservations) {
         if ($type == FALSE) {
           watchdog('Channel Manager', 'Booking.com reservation @reservation_id (@roomreservation_id) cannot be saved as no matching room type exists.', array('@reservation_id' => $reservation['id'], '@roomreservation_id' => $room['roomreservation_id']), WATCHDOG_INFO);
 
-          $reply['message'] = 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') cannot be saved as no matching room type exists for ' . $room['id'];
-          $reply['status'] = 'no_matching_room_type';
+          $reply[] = array(
+            'message' => 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') cannot be saved as no matching room type exists for ' . $room['id'],
+            'status' => 'no_matching_room_type',
+          );
 
-          return $reply;
+          continue;
         }
 
         // Attempt to create an event (i.e. find an available unit and create event)
@@ -662,10 +673,12 @@ function roomify_channel_connector_create($reservations) {
         if ($event == FALSE) {
           watchdog('Channel Manager', 'Booking.com reservation @reservation_id (@roomreservation_id) cannot be saved as no available units found.', array('@reservation_id' => $reservation['id'], '@roomreservation_id' => $room['roomreservation_id']), WATCHDOG_INFO);
 
-          $reply['message'] = 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') cannot be saved as no available units found.';
-          $reply['status'] = 'no_available_units';
+          $reply[] = array(
+            'message' => 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') cannot be saved as no available units found.',
+            'status' => 'no_available_units',
+          );
 
-          return $reply;
+          continue;
         }
 
         $created_time = $reservation['date'] . ' ' . $reservation['time'];
@@ -679,8 +692,10 @@ function roomify_channel_connector_create($reservations) {
         $booking->booking_event_reference[LANGUAGE_NONE][0]['target_id'] = $event->event_id;
         watchdog('Channel Manager', 'Booking.com reservation @reservation_id (@roomreservation_id) created', array('@reservation_id' => $reservation['id'], '@roomreservation_id' => $room['roomreservation_id']), WATCHDOG_INFO);
 
-        $reply['message'] = 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') created';
-        $reply['status'] = 'created';
+        $reply[] = array(
+          'message' => 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ') created',
+          'status' => 'created',
+        );
       }
 
       $booking->field_bcom_room_reservation_id[LANGUAGE_NONE][0]['value'] = $room['roomreservation_id'];
@@ -762,14 +777,19 @@ function roomify_channel_connector_create($reservations) {
         $type = bat_type_load($booking_wrapper->booking_event_reference->event_bat_unit_reference->type_id->value());
         $property = roomify_property_load($type->field_st_property_reference[LANGUAGE_NONE][0]['target_id']);
 
-        $reply['booking_id'] = $booking->booking_id;
-        $reply['property_id'] = $property->property_id;
-        $reply['property_name'] = $property->name;
+        $reply[] = array(
+          'booking_id' => $booking->booking_id,
+          'property_id' => $property->property_id,
+          'property_name' => $property->name,
+        );
       }
       catch (Exception $e) {
-        $reply['message'] = 'Booking.com reservation ' . $reservation['id'] . ' error: "' . $e->getMessage() . '"';
-        $reply['status'] = 'error';
-        return $reply;
+        $reply[] = array(
+          'message' => 'Booking.com reservation ' . $reservation['id'] . ' error: "' . $e->getMessage() . '"',
+          'status' => 'error',
+        );
+
+        continue;
       }
 
       watchdog('Channel Manager', 'Booking.com reservation @reservation_id (@roomreservation_id) saved', array('@reservation_id' => $reservation['id'], '@roomreservation_id' => $room['roomreservation_id']), WATCHDOG_INFO);
