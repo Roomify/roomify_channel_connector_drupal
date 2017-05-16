@@ -1567,11 +1567,14 @@ function roomify_channel_connector_entity_update($entity, $type) {
     }
 
     if ($type == 'bat_type') {
-      $original_constraints = roomify_channel_connector_get_type_constraints($entity->original, FALSE);
-      $constraints = roomify_channel_connector_get_type_constraints($entity);
+      // Check if the entity has changed.
+      if (isset($entity->original)) {
+        $original_constraints = roomify_channel_connector_get_type_constraints($entity->original, FALSE);
+        $constraints = roomify_channel_connector_get_type_constraints($entity);
 
-      if (serialize($constraints) != serialize($original_constraints)) {
-        roomify_channel_connector_notify_change($entity, 'rate_restriction');
+        if (serialize($constraints) != serialize($original_constraints)) {
+          roomify_channel_connector_notify_change($entity, 'rate_restriction');
+        }
       }
     }
   }
