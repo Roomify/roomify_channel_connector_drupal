@@ -42,6 +42,12 @@ function roomify_channel_connector_menu() {
     'weight' => '20',
   );
 
+  $items['admin/bat/cm-info'] = array(
+    'title' => 'Channel Manager report',
+    'page callback' => 'roomify_channel_connector_report_page',
+    'access callback' => 'roomify_channel_connector_report_page_access',
+  );
+
   return $items;
 }
 
@@ -2110,4 +2116,82 @@ function roomify_channel_connector_send_availability_notifications($map, $start_
       'availability'
     );
   }
+}
+
+/**
+ * Report page access callback.
+ */
+function roomify_channel_connector_report_page_access() {
+  global $user;
+
+  if ($user->uid == 1) {
+    return TRUE;
+  }
+
+  return FALSE;
+}
+
+/**
+ * Report page.
+ */
+function roomify_channel_connector_report_page() {
+  $output = '<h2>booking.com</h2>';
+
+  $header = array(t('Property'), t('Booking.com ID'), t('Mapped types'));
+  $rows = array();
+
+  $channel_maps = roomify_channel_map_load_multiple(FALSE);
+  foreach ($channel_maps as $map) {
+    $property = roomify_property_load($map->internal_property_id);
+
+    $row = array();
+    $row[] = l($property->name, 'admin/bat/config/property/manage/' . $property->property_id . '/channel-management');
+    $row[] = $map->external_property_id;
+
+    $types = '';
+    if (is_array($map->data)) {
+      foreach ($map->data as $property) {
+        foreach ($property as $internal_rate_id => $rate_details) {
+          $bat_type = bat_type_load($internal_rate_id);
+
+          $types .= '<div>' . l($bat_type->name . ' (' . $rate_details['roomid'] . ')', 'admin/bat/config/types/manage/' . $internal_rate_id . '/edit') . '</div>';
+        }
+      }
+    }
+    $row[] = $types;
+
+    $rows[] = $row;
+  }
+
+  $output .= theme('table', array('header' => $header, 'rows' => $rows));
+
+
+  $header = array(t('Property'), t('iCal url'));
+  $rows = array();
+
+  $output .= '<br><br><h2>iCal</h2>';
+
+  $results = db_select('variable', 'v')
+    ->fields('v', array('name', 'value'))
+    ->condition('name', 'roomify_channel_ical_import_url_%', 'LIKE')
+    ->execute()
+    ->fetchAll();
+  foreach ($results as $result) {
+    if ($url = unserialize($result->value)) {
+      $name = substr($result->name, 32);
+      list($property_id, $type_id, $ical_type) = explode('_', $name);
+
+      $property = roomify_property_load($property_id);
+
+      $row = array();
+      $row[] = l($property->name, 'admin/bat/config/property/manage/' . $property_id . '/channel-management');
+      $row[] = $url . ' (' . $ical_type . ')';
+
+      $rows[] = $row;
+    }
+  }
+
+  $output .= theme('table', array('header' => $header, 'rows' => $rows));
+
+  return $output;
 }
