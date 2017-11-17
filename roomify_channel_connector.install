@@ -17,6 +17,63 @@ function roomify_channel_connector_enable() {
 }
 
 /**
+ * Implements hook_schema().
+ */
+function roomify_channel_connector_schema() {
+  $schema = array();
+
+  $schema['roomify_channel_conflicts_log'] = array(
+    'description' => '',
+    'fields' => array(
+      'id' => array(
+        'description' => 'Primary Key.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'property_id' => array(
+        'description' => 'Property id.',
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+      'booking_id' => array(
+        'description' => 'Booking id.',
+        'type' => 'int',
+        'not null' => FALSE,
+        'default' => 0,
+      ),
+      'message' => array(
+        'description' => 'Message.',
+        'type' => 'text',
+        'not null' => FALSE,
+      ),
+      'channel' => array(
+        'description' => 'Channel.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+      'created' => array(
+        'description' => 'The Unix timestamp when the row was created.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'data' => array(
+        'type' => 'blob',
+        'not null' => FALSE,
+        'size' => 'big',
+        'serialize' => TRUE,
+        'description' => 'A serialized array of map data.',
+      ),
+    ),
+    'primary key' => array('id'),
+  );
+
+  return $schema;
+}
+
+/**
  * Schedule job 'update availability'.
  */
 function roomify_channel_connector_update_7001() {
@@ -26,4 +83,11 @@ function roomify_channel_connector_update_7001() {
     'periodic' => TRUE,
   );
   JobScheduler::get('roomify_channel_connector_update_availability')->set($job);
+}
+
+/**
+ * Create table "roomify_channel_conflicts_log".
+ */
+function roomify_channel_connector_update_7002() {
+  db_create_table('roomify_channel_conflicts_log', drupal_get_schema_unprocessed('roomify_channel_connector', 'roomify_channel_conflicts_log'));
 }

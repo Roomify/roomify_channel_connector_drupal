@@ -46,7 +46,7 @@ function roomify_channel_connector_menu() {
 }
 
 /**
- * Implements hook_permission()
+ * Implements hook_permission().
  */
 function roomify_channel_connector_permission() {
   return array(
@@ -1050,6 +1050,13 @@ function roomify_channel_connector_management_tab($property) {
     drupal_process_form($form_id, $form, $form_state);
     $content[] = $form;
   }
+
+  // Show all conflicts.
+  $content[] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Conflicts'),
+    '#value' => roomify_channel_connector_conflicts_table($property),
+  );
 
   return $content;
 }
@@ -2118,4 +2125,70 @@ function roomify_channel_connector_send_availability_notifications($map, $start_
       'availability'
     );
   }
+}
+
+/**
+ * @param $channel
+ * @param $property_id
+ * @param $message
+ * @param $booking_id
+ * @param $data
+ */
+function roomify_channel_connector_conflict_log($channel, $property_id, $message, $booking_id, $data = array()) {
+  $fields = array(
+    'channel' => $channel,
+    'property_id' => $property_id,
+    'message' => $message,
+    'booking_id' => $booking_id,
+    'data' => $data,
+  );
+
+  db_insert('roomify_channel_conflicts_log')
+    ->fields($fields)
+    ->execute();
+}
+
+/**
+ * Create a table with all conflicts.
+ *
+ * @param $property
+ *
+ * @return array
+ */
+function roomify_channel_connector_conflicts_table($property) {
+  $header = array(
+    t('Channel'),
+    t('Booking id'),
+    t('Message'),
+    t('Created'),
+  );
+
+  $conflicts = db_select('roomify_channel_conflicts_log', 'r')
+    ->fields('r')
+    ->condition('property_id', $property->property_id)
+    ->execute()
+    ->fetchAll();
+
+  $rows = array();
+
+  foreach ($conflicts as $conflict) {
+    if ($conflict->channel == 'booking_com') {
+      $channel = 'Booking.com';
+    }
+    elseif ($conflict->channel == 'ical') {
+      $channel = 'iCal';
+    }
+    else {
+      $channel = $conflict->channel;
+    }
+
+    $rows[] = array(
+      $channel,
+      l($conflict->booking_id, 'admin/bat/config/booking/manage/' . $conflict->booking_id),
+      $conflict->message,
+      format_date($conflict->created, 'bat'),
+    );
+  }
+
+  return theme('table', array('header' => $header, 'rows' => $rows));
 }
