@@ -66,6 +66,14 @@ function roomify_channel_connector_schema() {
         'serialize' => TRUE,
         'description' => 'A serialized array of map data.',
       ),
+      'hide' => array(
+        'description' => 'Hide.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0
+      ),
     ),
     'primary key' => array('id'),
   );
