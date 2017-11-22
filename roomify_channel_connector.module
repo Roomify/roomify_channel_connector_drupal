@@ -686,7 +686,7 @@ function roomify_channel_connector_create($reservations) {
 
           $booking_id = roomify_channel_connector_get_conflict_booking_id($room['arrival_date'], $room['departure_date'], $type);
 
-          roomify_channel_connector_conflict_log('booking_com', $type->field_st_property_reference[LANGUAGE_NONE][0]['target_id'], 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ')', $booking_id, $data);
+          roomify_channel_connector_conflict_log('booking_com', $type->field_st_property_reference[LANGUAGE_NONE][0]['target_id'], $reservation['id'], 'Booking.com reservation ' . $reservation['id'] . ' (' . $room['roomreservation_id'] . ')', $booking_id, $data);
 
           return $reply;
         }
@@ -2154,14 +2154,22 @@ function roomify_channel_connector_send_availability_notifications($map, $start_
 /**
  * @param $channel
  * @param $property_id
+ * @param $reservation_id
  * @param $message
  * @param $booking_id
  * @param $data
  */
-function roomify_channel_connector_conflict_log($channel, $property_id, $message, $booking_id, $data = array()) {
+function roomify_channel_connector_conflict_log($channel, $property_id, $reservation_id, $message, $booking_id, $data = array()) {
+  db_delete('roomify_channel_conflicts_log')
+    ->condition('property_id', $property_id)
+    ->condition('channel', $channel)
+    ->condition('reservation_id', $reservation_id)
+    ->execute();
+
   $fields = array(
     'channel' => $channel,
     'property_id' => $property_id,
+    'reservation_id' => $reservation_id,
     'message' => $message,
     'booking_id' => is_numeric($booking_id) ? $booking_id : 0,
     'data' => serialize($data),
