@@ -36,6 +36,12 @@ function roomify_channel_connector_schema() {
         'type' => 'int',
         'not null' => TRUE,
       ),
+      'reservation_id' => array(
+        'description' => 'Reservation id.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
       'booking_id' => array(
         'description' => 'Booking id.',
         'type' => 'int',
