@@ -927,6 +927,8 @@ function roomify_channel_type_availability($property_id, $type_id, $start_date, 
   // Create an event store for availability type events.
   $event_store = new DrupalDBStore('availability', DrupalDBStore::BAT_STATE);
 
+  $message = array();
+
   // Provided that we have units let's check availability.
   if (!empty($units)) {
     $calendar = new Calendar($units, $event_store);
@@ -943,7 +945,6 @@ function roomify_channel_type_availability($property_id, $type_id, $start_date, 
     }
 
     // With the units in place we can create the properly formatted message.
-    $message = array();
     $i = -1;
     $old_count = 0;
     $start = TRUE;
